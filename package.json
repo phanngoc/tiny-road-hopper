@@ -1,0 +1,22 @@
+{
+  "name": "tiny-road-hopper",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Tiny Road Hopper - an original grid-hopping arcade game: cross endless roads, rivers and railways before the frontier catches you.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.47.2",
+    "typescript": "5.6.2",
+    "vite": "5.4.21",
+    "vitest": "2.1.2"
+  }
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#1b2a3d" />
+    <meta name="description" content="Tiny Road Hopper - an original grid-hopping arcade game: cross endless roads, rivers and railways before the frontier catches you." />
+    <title>Tiny Road Hopper</title>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Tiny Road Hopper game view" role="img"></canvas>
+
+    <header id="hud">
+      <div class="hud-group"><span class="label">Score</span><span id="score" class="value">0</span></div>
+      <div class="hud-group"><span class="label">Best</span><span id="best" class="value">0</span></div>
+      <div class="hud-group"><span class="label">Rows</span><span id="rows" class="value">0</span></div>
+      <div class="hud-group"><span class="label">Coins</span><span id="coins" class="value">0</span></div>
+      <div class="hud-spacer"></div>
+      <button id="pause-btn" type="button">Pause</button>
+      <button id="mute-btn" type="button" aria-pressed="false">Sound on</button>
+    </header>
+
+    <div id="danger" role="img" aria-label="Distance ahead of the hawk"><span></span></div>
+    <div id="callout" aria-live="polite"></div>
+
+    <div id="overlay">
+      <div class="panel">
+        <h1 id="overlay-title">Tiny Road Hopper</h1>
+        <div id="overlay-body"></div>
+        <button id="overlay-action" type="button">Start hopping</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

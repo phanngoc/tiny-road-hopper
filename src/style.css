@@ -1,0 +1,162 @@
+:root {
+  --ink: #eaf0f7;
+  --panel: rgba(12, 20, 32, 0.9);
+  --accent: #ffd75e;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0f1a2b;
+  color: var(--ink);
+  font-family: 'Trebuchet MS', 'Avenir Next', system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+#scene {
+  display: block;
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  padding: calc(0.5rem + env(safe-area-inset-top)) 0.7rem 0.5rem;
+  background: linear-gradient(180deg, rgba(8, 14, 24, 0.78), rgba(8, 14, 24, 0));
+  pointer-events: none;
+  font-size: clamp(0.72rem, 2.4vw, 0.9rem);
+}
+
+.hud-group { display: flex; flex-direction: column; line-height: 1.15; }
+.hud-spacer { flex: 1; }
+.label { opacity: 0.62; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.66em; }
+.value { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 1.25em; }
+
+#hud button {
+  pointer-events: auto;
+  background: rgba(24, 38, 58, 0.85);
+  color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  cursor: pointer;
+  min-height: 2.2rem;
+}
+#hud button:hover { background: rgba(38, 58, 84, 0.9); }
+
+/* Slack gauge: how much room is left before the hawk strikes. */
+#danger {
+  position: fixed;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: calc(0.7rem + env(safe-area-inset-bottom));
+  height: 0.55rem;
+  border-radius: 0.4rem;
+  background: rgba(8, 14, 24, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+  --fill: 100%;
+}
+#danger span {
+  display: block;
+  height: 100%;
+  width: var(--fill);
+  background: linear-gradient(90deg, #ff5a4a, var(--accent));
+  transition: width 90ms linear;
+}
+#danger.critical { animation: throb 0.5s infinite alternate; }
+@keyframes throb { from { box-shadow: 0 0 0 rgba(255, 90, 74, 0); } to { box-shadow: 0 0 14px rgba(255, 90, 74, 0.85); } }
+
+#callout {
+  position: fixed;
+  top: 24%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(1.3rem, 6vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0;
+}
+#callout.pop { animation: pop 1s ease-out forwards; }
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.7); }
+  18% { opacity: 1; transform: scale(1.08); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(6, 11, 19, 0.72);
+  backdrop-filter: blur(3px);
+}
+#overlay.hidden { display: none; }
+
+.panel {
+  max-width: 30rem;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1rem;
+  padding: 1.1rem 1.25rem 1.35rem;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+.panel h1 { margin: 0 0 0.55rem; font-size: clamp(1.4rem, 5.5vw, 2rem); }
+.panel p { margin: 0.5rem 0; line-height: 1.45; font-size: 0.95rem; }
+.panel ul { margin: 0.5rem 0 0.7rem; padding-left: 1.1rem; line-height: 1.55; font-size: 0.92rem; }
+.panel .cause { color: #ffb4ab; font-weight: 700; }
+.panel .tally { font-size: 1.02rem; }
+.panel .tally b { color: var(--accent); font-size: 1.35em; }
+
+#overlay-action {
+  margin-top: 0.7rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #12202f;
+  background: linear-gradient(180deg, #ffe38b, var(--accent));
+  border: none;
+  border-radius: 0.7rem;
+  cursor: pointer;
+  min-height: 3rem;
+}
+#overlay-action:hover { filter: brightness(1.06); }
+
+.pw {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.4rem;
+  font-weight: 700;
+  font-size: 0.86em;
+}
+.pw.lg { background: #8a6242; color: #fff; }
+.pw.tr { background: #ff5a4a; color: #240a08; }
+.pw.co { background: var(--accent); color: #2a2003; }
+
+@media (max-width: 430px) {
+  #hud { gap: 0.4rem; }
+  #hud button { padding: 0.35rem 0.45rem; }
+}
