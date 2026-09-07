@@ -125,7 +125,7 @@ $ npm run build
 tsc --noEmit && vite build
 dist/index.html                  1.75 kB │ gzip: 0.69 kB
 dist/assets/index-*.css          3.25 kB │ gzip: 1.36 kB
-dist/assets/index-*.js          24.6  kB │ gzip: 9.4  kB
+dist/assets/index-*.js          24.41 kB │ gzip: 9.37 kB
 ✓ built in 94ms
 
 $ npm test
