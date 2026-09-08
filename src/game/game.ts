@@ -1,4 +1,5 @@
 /** Wires the pure simulation to the canvas, the DOM HUD and the input layer. */
+import { onRemoteBest, submitRun, syncBest, track } from './arcade';
 import { Renderer } from './render';
 import type { Viewport } from './render';
 import { Sfx } from './audio';
@@ -60,6 +61,15 @@ export class Game {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state.phase === 'playing') this.togglePause();
     });
+    // Save từ máy khác về: chỉ nhận kỷ lục CAO HƠN, không bao giờ để tụt.
+    // Ghi luôn xuống localStorage để lần sau không phải chờ mạng nữa.
+    onRemoteBest((best) => {
+      if (best <= this.bestScore) return;
+      this.bestScore = best;
+      saveBest(best);
+      this.updateHud();
+    });
+
     this.resize();
     this.syncMuteButton();
     this.showMenu();
@@ -202,6 +212,11 @@ export class Game {
       this.bestScore = score;
       saveBest(score);
     }
+    // Platform: điểm LƯỢT vừa xong lên bảng, kỷ lục lên cloud save. Cả hai nuốt
+    // lỗi trong arcade.ts nên platform chết cũng không chặn màn game over.
+    submitRun(score);
+    syncBest(this.bestScore);
+    track('run_over', { score, rows: this.state.maxRow, coins: this.state.coins, cause });
     this.showOverlay(
       'Squashed',
       `<p class="cause">You ${cause}.</p>

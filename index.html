@@ -31,6 +31,11 @@
       </div>
     </div>
 
+    <!-- Platform Arcade: nạp TRƯỚC module game để window.ArcadeGame sẵn sàng.
+         Đường dẫn tương đối vì bundle được phục vụ ở /g/<id>/ lẫn ở gốc domain. -->
+    <script>window.ARCADE_GAME_ID = "tiny-road-hopper";</script>
+    <script src="vendor/arcade.js"></script>
+    <script src="arcade-bridge.js"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

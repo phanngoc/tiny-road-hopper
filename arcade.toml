@@ -1,0 +1,22 @@
+[game]
+id          = "tiny-road-hopper"
+name        = "Tiny Road Hopper"
+version     = "1.0.0"
+engine      = "canvas2d"
+# Bàn cờ tự co theo khung nhìn (render.ts: tile = min(w/9.5, h/13)), smoke test
+# đã chứng minh cả desktop 1280x800 lẫn iPhone dọc -> không khoá hướng.
+orientation = "any"
+# Game này build bằng vite: file tĩnh nằm ở dist/, không phải gốc repo.
+client_dir  = "dist"
+
+[runtime]
+# Chơi đơn, không phòng/không đồng bộ mạng -> offline. Rooms API của SDK chỉ
+# dùng được với mode authoritative/relay (packages/sdk/src/index.ts:170).
+mode = "offline"
+
+[capabilities]
+save        = true
+leaderboard = ["daily", "alltime"]
+
+[limits]
+bundle_bytes = 5242880

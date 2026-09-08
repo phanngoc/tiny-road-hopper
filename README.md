@@ -4,8 +4,8 @@ An original grid-hopping arcade game for the browser. You hop one tile at a time
 across an endless procession of roads, rivers and railways while the **frontier**
 creeps up behind you — stop moving and a hawk takes you.
 
-Desktop and mobile, no install, no backend, no accounts. TypeScript + Vite +
-Canvas 2D, roughly 24 kB of JavaScript.
+Desktop and mobile, no install, no required backend, no accounts. TypeScript +
+Vite + Canvas 2D, roughly 25 kB of JavaScript.
 
 ![Desktop gameplay](docs/screenshot-desktop-play.png)
 
@@ -41,7 +41,8 @@ gauge along the bottom of the screen is your remaining slack; it throbs red when
 you are nearly caught.
 
 **Score** is the number of rows crossed, plus 3 per coin. Your best is kept in
-`localStorage`.
+`localStorage`; when the Arcade platform serves the game it also goes to a
+leaderboard and to cloud save (see [Arcade platform](#arcade-platform)).
 
 ## Controls
 
@@ -70,6 +71,7 @@ npm run build     # tsc --noEmit && vite build  -> dist/
 npm run preview   # serve the production build on :4173
 npm test          # vitest: simulation unit tests
 npm run smoke     # Playwright: drives dist/ in Chromium, writes docs/ screenshots
+npm run smoke:arcade  # Playwright: same bundle, but served by a live Arcade platform
 ```
 
 `npm run smoke` needs a Chromium binary: `npx playwright install chromium` once.
@@ -84,8 +86,12 @@ src/game/input.ts    keyboard + swipe/tap
 src/game/audio.ts    WebAudio synthesis - no audio files at all
 src/game/storage.ts  best score + mute flag in localStorage
 src/game/config.ts   every tunable number
+src/game/arcade.ts   typed, error-swallowing wrapper around the Arcade platform
+public/              platform SDK + bridge, copied verbatim into dist/ by Vite
 tests/logic.test.ts  26 unit tests driving logic.ts exactly as the browser does
+tests/arcade.test.ts  7 unit tests pinning the platform fallback contract
 scripts/smoke.mjs    62 browser checks at desktop + iPhone 13 viewports
+scripts/arcade-smoke.mjs  9 browser checks against a running platform
 ```
 
 Three decisions shaped the rest:
@@ -123,19 +129,26 @@ added 48 packages, and audited 49 packages in 1s
 
 $ npm run build
 tsc --noEmit && vite build
-dist/index.html                  1.75 kB │ gzip: 0.69 kB
+dist/index.html                  2.07 kB │ gzip: 0.92 kB
 dist/assets/index-*.css          3.25 kB │ gzip: 1.36 kB
-dist/assets/index-*.js          24.41 kB │ gzip: 9.37 kB
-✓ built in 94ms
+dist/assets/index-*.js          25.15 kB │ gzip: 9.66 kB
+✓ built in 104ms
 
 $ npm test
-✓ tests/logic.test.ts (26 tests) 50ms
-Test Files  1 passed (1)
-     Tests  26 passed (26)
+✓ tests/arcade.test.ts (7 tests) 4ms
+✓ tests/logic.test.ts (26 tests) 63ms
+Test Files  2 passed (2)
+     Tests  33 passed (33)
 
 $ npm run smoke
 62/62 checks passed
+
+$ npm run smoke:arcade          # needs a platform serving /g/tiny-road-hopper/
+9/9 cổng pass
 ```
+
+`dist/` also carries `vendor/arcade.js` (8.3 kB) and `arcade-bridge.js` (3.2 kB),
+which Vite copies from `public/` untouched.
 
 The unit tests cover stream wrapping and reversal, generator invariants over 25
 seeds (safe opening rows, no sealed grass row, every river row crossable, all
@@ -191,9 +204,13 @@ Code and content: MIT, see [LICENSE](LICENSE).
   vignette both animate unconditionally.
 - **Canvas only.** The board is not a DOM tree, so a screen reader gets the HUD
   and the overlays but not the state of the board.
-- **Score is local.** `localStorage` only — no backend, no leaderboard, and the
-  best score is per-browser. Private-browsing failures are swallowed and the
-  score becomes session-only.
+- **Score is local unless the platform is there.** Standalone, the best score is
+  per-browser `localStorage`, and private-browsing failures are swallowed so the
+  score becomes session-only. Leaderboards and cross-device save exist only when
+  the Arcade platform serves the game.
+- **The leaderboard is unverified.** Scores are submitted by the client from a
+  browser the player controls, so the boards say what a client claimed, not what
+  a referee observed. `mode = "offline"` in `arcade.toml` states this openly.
 - **Hop resolution is discrete.** You commit to a destination tile at the apex of
   the hop, so a car that arrives during the second half of a hop kills you even
   though you look mid-air. This is deliberate and tested, but it is a design
@@ -204,3 +221,36 @@ Code and content: MIT, see [LICENSE](LICENSE).
   here rather than forced.
 - Verified in Chromium (desktop + emulated iPhone 13). Not tested on real iOS
   Safari, Firefox or Android hardware.
+
+## Arcade platform
+
+The game is playable as a plain static bundle with no server at all. When it is
+served by the Arcade platform it additionally gets a leaderboard and cloud save.
+
+- `arcade.toml` declares the manifest: `mode = "offline"`, boards `daily` and
+  `alltime`, `client_dir = "dist"` (this is a Vite build, so the static files are
+  in `dist/`, not the repo root).
+- `public/vendor/arcade.js` is the platform SDK, `public/arcade-bridge.js` the
+  shim that exposes `window.ArcadeGame`, and `src/game/arcade.ts` the typed
+  wrapper the game calls.
+- The bridge only activates when the page is actually served by the platform
+  (path `/g/<id>/`, or an explicit `window.ARCADE_BASE_URL`). Anywhere else it
+  issues no requests at all, so a standalone deploy stays silent instead of
+  logging 404s for an API that is not there.
+- A finished run submits the score of *that run* to both boards, and the personal
+  best to cloud save. A best arriving from another device is accepted only when
+  it is higher than the local one, then written straight back to `localStorage`.
+- Every platform call swallows its own errors. If the platform is down the game
+  behaves exactly as it did before this integration.
+
+Tests:
+
+```
+npm test            # unit, includes the bridge fallback contract
+npm run smoke       # browser, platform deliberately absent
+npm run smoke:arcade [baseUrl]   # browser, against a running platform
+```
+
+`smoke:arcade` proves the parts the other two cannot: guest auth against the real
+API, a finished run reaching both boards and reading back, and the personal best
+returning from cloud save after the local copy is deleted.
