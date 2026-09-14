@@ -331,12 +331,16 @@ export class Renderer {
     const body = hues[Math.floor(m.tint * hues.length) % hues.length]!;
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fillRect(cx - w / 2, ground - rowH * 0.1, w, rowH * 0.12);
+    // The warm body hues sit on #3a3f47 asphalt below a 3:1 ratio, so this dark
+    // rim is a readability requirement, not decoration. Dark rather than white:
+    // it separates the car from the road without bleaching the toy palette.
+    const rim = 'rgba(15,22,32,0.85)';
     if (m.kind === 'truck') {
-      this.box(cx + dir * w * 0.34, ground - rowH * 0.16, w * 0.3, rowH * 0.42, tile * 0.62, body, this.shade(body, 0.72));
-      this.box(cx - dir * w * 0.2, ground - rowH * 0.16, w * 0.68, rowH * 0.44, tile * 0.8, '#dfe4ea', '#aeb6bf');
+      this.box(cx + dir * w * 0.34, ground - rowH * 0.16, w * 0.3, rowH * 0.42, tile * 0.62, body, this.shade(body, 0.72), rim);
+      this.box(cx - dir * w * 0.2, ground - rowH * 0.16, w * 0.68, rowH * 0.44, tile * 0.8, '#dfe4ea', '#aeb6bf', rim);
     } else {
-      this.box(cx, ground - rowH * 0.16, w, rowH * 0.44, tile * 0.36, body, this.shade(body, 0.72));
-      this.box(cx - dir * w * 0.06, ground - rowH * 0.16 - tile * 0.3, w * 0.62, rowH * 0.36, tile * 0.3, this.shade(body, 1.12), '#25313d');
+      this.box(cx, ground - rowH * 0.16, w, rowH * 0.44, tile * 0.36, body, this.shade(body, 0.72), rim);
+      this.box(cx - dir * w * 0.06, ground - rowH * 0.16 - tile * 0.3, w * 0.62, rowH * 0.36, tile * 0.3, this.shade(body, 1.12), '#25313d', rim);
     }
     // Headlights on the leading end read the direction of travel at a glance.
     ctx.fillStyle = '#fff3b0';
@@ -511,13 +515,26 @@ export class Renderer {
 
   /* --------------------------------------------------------------- helpers */
 
-  /** One chunky solid: a front face plus a lighter top face. */
-  private box(cx: number, groundY: number, w: number, depth: number, height: number, top: string, front: string): void {
+  /** One chunky solid: a front face plus a lighter top face. `outline` strokes
+   *  the silhouette the two faces actually cover, which is a single rect from
+   *  the top face's top edge down to the ground. Stroking a bounding box around
+   *  a multi-part sprite instead leaves bars sticking out past the narrower
+   *  part, so callers outline each part separately. */
+  private box(
+    cx: number, groundY: number, w: number, depth: number, height: number,
+    top: string, front: string, outline?: string,
+  ): void {
     const ctx = this.ctx;
     ctx.fillStyle = front;
     ctx.fillRect(cx - w / 2, groundY - height, w, height);
     ctx.fillStyle = top;
     ctx.fillRect(cx - w / 2, groundY - height - depth, w, depth + 1);
+    if (!outline) return;
+    ctx.save();
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = Math.max(1, Math.min(w * 0.045, 2.5));
+    ctx.strokeRect(cx - w / 2, groundY - height - depth, w, height + depth);
+    ctx.restore();
   }
 
   private shade(hex: string, f: number): string {

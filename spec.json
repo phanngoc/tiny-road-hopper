@@ -68,7 +68,8 @@
     "touchTargetMinPx": 44,
     "prefersReducedMotion": "Screen shake and the throbbing danger vignette are dropped; the danger tint stays steady.",
     "inputRelease": "touchcancel, pointercancel, mouseleave, window blur and visibilitychange all drop a held gesture without firing it.",
-    "dprCap": 2
+    "dprCap": 2,
+    "vehicleContrast": "Vehicles carry a dark rim (rgba(15,22,32,0.85)) stroked around each drawn face, because the warm body hues sit on #3a3f47 asphalt below a 3:1 ratio. The rim is stroked per face, not around a bounding box, so the two-part car silhouette is preserved."
   },
   "assets": {
     "images": "none - every sprite is drawn procedurally with Canvas 2D primitives in src/game/render.ts",
@@ -105,7 +106,6 @@
     "limitations": "Emulated Chromium viewports on an Apple M1 host. These are NOT physical iPhone or Android measurements, and no real-device Safari or Android browser run has been done. No 60 s frame-interval distribution has been captured for this branch yet, so no FPS claim is made."
   },
   "knownGaps": [
-    "Vehicle body hues (#e05a4c and friends) on asphalt #3a3f47 are below a 3:1 contrast ratio. A first outline attempt was reverted because it framed the silhouette in a bounding rectangle; a correct fix must stroke the drawn faces.",
     "No 60 s perf run (frame-interval distribution, heap trend) on this branch yet.",
     "Camera lookahead is still the original p.row + 0.55; not retuned.",
     "No short distance goals or themed row segments yet.",

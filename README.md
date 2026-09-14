@@ -230,6 +230,11 @@ What changed:
   cost responsiveness without the fairness.)
 - **Destination preview.** The landing cell is marked while a hop is in flight,
   with a dashed marker for a buffered press behind it.
+- **Vehicle contrast.** The warm body hues sit on `#3a3f47` asphalt below a 3:1
+  ratio, so vehicles now carry a dark rim. It is stroked around each face the
+  sprite actually draws rather than around a bounding box - a car is two boxes
+  of different widths, and a bounding stroke leaves bars sticking out past the
+  narrower cabin (that first attempt is reverted in `b595b15`).
 - **Reduced motion.** Screen shake and the throbbing danger vignette are
   dropped under `prefers-reduced-motion`. Both live in the renderer and feed
   nothing back into the simulation, so collision and scoring are unchanged.
