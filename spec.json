@@ -1,0 +1,53 @@
+{
+  "id": "tiny-road-hopper",
+  "title": "Tiny Road Hopper",
+  "version": "1.1.0",
+  "summary": "Original grid-hopping arcade game: cross endless roads, rivers and railways before the advancing frontier catches you.",
+  "license": "MIT",
+  "engine": { "language": "TypeScript", "bundler": "Vite", "renderer": "Canvas 2D", "dependencies": "none at runtime" },
+  "controls": {
+    "keyboard": { "hop": ["ArrowUp/Down/Left/Right", "WASD", "Space (forward)"], "pause": ["P", "Escape"], "mute": ["M"], "confirm": ["Enter"] },
+    "touch": { "hop": "swipe in the direction to hop", "forward": "tap", "swipeMinPx": 24, "tapMaxMs": 350 },
+    "buffering": {
+      "slots": 1,
+      "acceptFrom": 0.5,
+      "note": "A press during a hop is remembered only once the hop is at least BUFFER_FROM through. Earlier presses are dropped so a banked move cannot fire a full HOP_TIME later into traffic the player never saw. A buffered move is re-validated with canEnter before it plays."
+    }
+  },
+  "balance": {
+    "halfCols": 6, "lanePeriod": 26, "hopTime": 0.13, "hopHeight": 0.55, "playerWidth": 0.72,
+    "behindLimit": 5, "creepBase": 0.5, "creepPerRow": 0.0055, "creepMax": 2.3,
+    "aheadRows": 26, "keepBehind": 8, "safeStartRows": 3,
+    "trainWarn": 1.45, "trainWidth": 17, "trainSpeed": 26, "trainIdle": [1.6, 4.2],
+    "coinBonus": 3,
+    "scoring": "score = furthest row reached + coins * COIN_BONUS",
+    "determinism": "Simulation is pure, DOM-free and clock-free, driven at a fixed 1/120 s timestep. Renderer state (camera, shake, reduced motion) never feeds back into it."
+  },
+  "accessibility": {
+    "touchTargetMinPx": 44,
+    "prefersReducedMotion": "Screen shake and the throbbing danger vignette are dropped; the danger tint stays steady.",
+    "inputRelease": "touchcancel, pointercancel, mouseleave, window blur and visibilitychange all drop a held gesture without firing it.",
+    "dprCap": 2
+  },
+  "assets": {
+    "images": "none - every sprite is drawn procedurally with Canvas 2D primitives in src/game/render.ts",
+    "audio": "none - all sounds are synthesised with the WebAudio API in src/game/audio.ts",
+    "fonts": "system font stack only",
+    "thirdParty": "none",
+    "attribution": "All visuals and audio are original to this repository and carry its MIT licence."
+  },
+  "measured": {
+    "harness": "scripts/shots.mjs - headless Chromium, pinned world (restart() once => seed 1015568748), pilot plays to row 14",
+    "viewports": ["360x640", "390x844", "430x932", "844x390", "1280x800"],
+    "before": { "commit": "e204d32", "touchTargetsUnder44": "pause-btn 46x35, mute-btn 63x35 at all 5 viewports", "menuWords": 99, "horizontalOverflowPx": 0, "dprCap": 2, "consoleErrors": 0 },
+    "after": { "touchTargetsUnder44": "none at any viewport", "menuWordsTouch": 49, "menuWordsDesktop": 69, "horizontalOverflowPx": 0, "dprCap": 2, "consoleErrors": 0 },
+    "limitations": "Emulated Chromium viewports on an Apple M1 host. These are NOT physical iPhone or Android measurements, and no real-device Safari or Android browser run has been done. No 60 s frame-interval distribution has been captured for this branch yet, so no FPS claim is made."
+  },
+  "knownGaps": [
+    "Vehicle body hues (#e05a4c and friends) on asphalt #3a3f47 are below a 3:1 contrast ratio. A first outline attempt was reverted because it framed the silhouette in a bounding rectangle; a correct fix must stroke the drawn faces.",
+    "No 60 s perf run (frame-interval distribution, heap trend) on this branch yet.",
+    "Camera lookahead is still the original p.row + 0.55; not retuned.",
+    "No short distance goals or themed row segments yet.",
+    "No real-device Safari/Android testing."
+  ]
+}

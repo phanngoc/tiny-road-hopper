@@ -193,6 +193,47 @@ whatever the OS provides (`Trebuchet MS` / `Avenir Next` / `system-ui`).
 
 Code and content: MIT, see [LICENSE](LICENSE).
 
+## Mobile and visual polish (branch `feat/mobile-visual-polish`)
+
+Measured with `scripts/shots.mjs`, which serves a built bundle to headless
+Chromium, pins the world (a single `restart()` after load always yields seed
+1015568748) and plays a pilot to row 14, then audits every visible control with
+`elementFromPoint`. Baseline is the committed build at `e204d32`.
+
+| Measure | Before (`e204d32`) | After |
+| --- | --- | --- |
+| Touch targets under 44 CSS px | `pause-btn` 46x35, `mute-btn` 63x35 at all 5 viewports | none at any viewport |
+| Start-card word count (touch) | 99 | 49 |
+| Start-card word count (desktop) | 99 | 69 (keeps the key bindings) |
+| Horizontal overflow | 0 px | 0 px |
+| DPR cap | 2 mobile / 1 desktop | unchanged |
+| Console errors | 0 | 0 |
+| Pilot reaches row 14 alive | yes, 5/5 viewports | yes, 5/5 viewports |
+
+Viewports: 360x640, 390x844, 430x932, 844x390 (short landscape) and 1280x800.
+
+What changed:
+
+- **Held input is released.** A cancelled touch never delivers `touchend`, so a
+  half-finished swipe stayed armed and the next unrelated `touchmove` completed
+  it as a hop nobody asked for. `touchcancel`, `pointercancel`, `mouseleave`,
+  window `blur` and `visibilitychange` now all drop the gesture.
+- **Bounded input buffering.** Single-slot buffering and its `canEnter`
+  re-check already existed and were correct; what was missing was a bound on
+  staleness. `BUFFER_FROM = 0.5` means a press made in the first half of a hop
+  is dropped rather than banked, so a queued move cannot fire a full `HOP_TIME`
+  later into traffic the player never saw.
+- **Destination preview.** The landing cell is marked while a hop is in flight,
+  with a dashed marker for a buffered press behind it.
+- **Reduced motion.** Screen shake and the throbbing danger vignette are
+  dropped under `prefers-reduced-motion`. Both live in the renderer and feed
+  nothing back into the simulation, so collision and scoring are unchanged.
+
+These are emulated viewports on an Apple M1 host, **not** physical iPhone or
+Android devices. No real-device Safari or Android run has been done, and no
+frame-interval distribution has been captured on this branch, so no FPS
+guarantee is made.
+
 ## Known limitations
 
 - **Not a difficulty-tuned product.** The pacing curve is hand-picked and only
