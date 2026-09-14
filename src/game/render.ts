@@ -124,9 +124,50 @@ export class Renderer {
     // (only possible in the frame it dies) draw it anyway so it never vanishes.
     if (!rowAt(state, playerRow)) this.drawPlayer(state, sx, gy, tile, rowH);
 
+    this.drawTarget(state, sx, gy, tile, rowH);
     this.drawHawk(state, sx, gy, tile, rowH, vp);
     ctx.setTransform(vp.dpr, 0, 0, vp.dpr, 0, 0);
     this.drawVignette(state, vp);
+  }
+
+  /** Marks the cell the hopper is committed to, so a hop in flight - and a
+   *  press buffered behind it - has a visible destination instead of being
+   *  something the player only finds out about on landing. */
+  private drawTarget(
+    state: GameState, sx: (x: number) => number, gy: (r: number) => number,
+    tile: number, rowH: number,
+  ): void {
+    const p = state.player;
+    if (state.phase !== 'playing') return;
+    const hop = p.hop;
+    if (!hop || hop.bump) return;
+    const ctx = this.ctx;
+    // The live hop's landing cell, then the buffered press's cell beyond it.
+    const cells: Array<{ x: number; row: number; strong: boolean }> = [
+      { x: hop.toX, row: hop.toRow, strong: true },
+    ];
+    if (state.queued) {
+      const q = state.queued;
+      cells.push({
+        x: hop.toX + (q === 'left' ? -1 : q === 'right' ? 1 : 0),
+        row: hop.toRow + (q === 'up' ? 1 : q === 'down' ? -1 : 0),
+        strong: false,
+      });
+    }
+    for (const c of cells) {
+      const cx = sx(c.x);
+      const cy = gy(c.row) - rowH * 0.18;
+      const w = tile * 0.62;
+      const h = rowH * 0.34;
+      ctx.save();
+      ctx.lineWidth = Math.max(1.5, tile * 0.055);
+      ctx.strokeStyle = c.strong ? 'rgba(255,255,255,0.85)' : 'rgba(255,215,94,0.75)';
+      if (!c.strong) ctx.setLineDash([tile * 0.14, tile * 0.1]);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   /* --------------------------------------------------------------- terrain */
@@ -276,8 +317,15 @@ export class Renderer {
     const w = m.w * tile;
     const hues = ['#e05a4c', '#e0a84c', '#4cc0e0', '#b46ce0', '#7ce06c'];
     const body = hues[Math.floor(m.tint * hues.length) % hues.length]!;
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fillRect(cx - w / 2, ground - rowH * 0.1, w, rowH * 0.12);
+    // Contrast rim. The warm body hues sit on #3a3f47 asphalt well under a 3:1
+    // ratio, so this outline is a readability requirement, not decoration.
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+    ctx.lineWidth = Math.max(1.5, tile * 0.055);
+    ctx.strokeRect(cx - w / 2 - 1, ground - rowH * 0.16 - tile * 0.44, w + 2, tile * 0.44 + rowH * 0.3);
+    ctx.restore();
     if (m.kind === 'truck') {
       this.box(cx + dir * w * 0.34, ground - rowH * 0.16, w * 0.3, rowH * 0.42, tile * 0.62, body, this.shade(body, 0.72));
       this.box(cx - dir * w * 0.2, ground - rowH * 0.16, w * 0.68, rowH * 0.44, tile * 0.8, '#dfe4ea', '#aeb6bf');

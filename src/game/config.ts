@@ -9,6 +9,13 @@ export const HALF_COLS = 6;
 export const LANE_PERIOD = 26;
 
 export const HOP_TIME = 0.13;
+/** A move pressed during a hop is only remembered once the hop is this far
+ *  through. Earlier than that the press is dropped, because a hop lasts
+ *  HOP_TIME and a move banked at t=0 would fire a full hop later - long enough
+ *  for a car to arrive in the meantime, which reads as the game moving you into
+ *  traffic by itself. Raising this drops more presses; lowering it queues
+ *  staler ones. */
+export const BUFFER_FROM = 0.5;
 export const HOP_HEIGHT = 0.55;
 export const PLAYER_W = 0.72;
 

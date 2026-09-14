@@ -1,7 +1,7 @@
 /** The whole simulation: pure, deterministic, DOM-free and clock-free, so the
  *  unit tests drive it exactly like the browser does. */
 import {
-  AHEAD_ROWS, BEHIND_LIMIT, COIN_BONUS, CREEP_BASE, CREEP_MAX, CREEP_PER_ROW,
+  AHEAD_ROWS, BEHIND_LIMIT, BUFFER_FROM, COIN_BONUS, CREEP_BASE, CREEP_MAX, CREEP_PER_ROW,
   HALF_COLS, HOP_TIME, KEEP_BEHIND, LANE_PERIOD, PLAYER_W, SAFE_START_ROWS,
   TRAIN_IDLE_MAX, TRAIN_IDLE_MIN, TRAIN_SPEED, TRAIN_W, TRAIN_WARN,
 } from './config';
@@ -190,9 +190,11 @@ export function applyAction(s: GameState, a: Action): GameEvent[] {
   if (s.phase !== 'playing') return out;
   const p = s.player;
   // One buffered move keeps fast taps feeling responsive without letting the
-  // player bank a queue of hops.
+  // player bank a queue of hops. Only the back half of the hop can buffer: a
+  // press banked at the very start would fire a whole hop later, by which time
+  // the lane it aims at may have filled with traffic the player never saw.
   if (p.hop && p.hop.t < 1) {
-    s.queued = a;
+    if (p.hop.t >= BUFFER_FROM) s.queued = a;
     return out;
   }
   const fromCol = Math.round(p.x);
