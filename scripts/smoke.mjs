@@ -331,6 +331,54 @@ async function run(label, contextOptions, shots) {
     }, { cx, cy });
     const swiped = await page.evaluate(() => Math.round(window.tinyRoadHopper.state.player.x));
     check(`${label}: swipe right hops sideways`, swiped === 1, `x=${swiped}`);
+
+    // A cancelled touch must not stay armed. The browser takes a touch away
+    // without a touchend (scroll takeover, call banner, app switch); if the
+    // gesture is still held, the next unrelated touchmove completes it as a
+    // hop the player never asked for.
+    await pave(page);
+    const held = await page.evaluate(async ({ cx, cy }) => {
+      const el = document.getElementById('scene');
+      const mk = (type, x, y) => {
+        const t = new Touch({ identifier: 2, target: el, clientX: x, clientY: y });
+        el.dispatchEvent(new TouchEvent(type, { changedTouches: [t], touches: type === 'touchcancel' ? [] : [t], bubbles: true, cancelable: true }));
+      };
+      const before = { x: window.tinyRoadHopper.state.player.x, row: window.tinyRoadHopper.state.player.row };
+      mk('touchstart', cx, cy);
+      mk('touchcancel', cx, cy);
+      // Far enough to clear SWIPE_MIN had the gesture survived the cancel.
+      mk('touchmove', cx + 90, cy);
+      await new Promise((r) => setTimeout(r, 250));
+      const after = window.tinyRoadHopper.state.player;
+      return { before, x: after.x, row: after.row, hop: !!after.hop };
+    }, { cx, cy });
+    check(
+      `${label}: a cancelled touch does not fire a stale hop`,
+      Math.round(held.x) === Math.round(held.before.x) && held.row === held.before.row && !held.hop,
+      `x=${held.x} row=${held.row} hop=${held.hop}`,
+    );
+
+    // Same contract for a window blur mid-gesture.
+    await pave(page);
+    const blurred = await page.evaluate(async ({ cx, cy }) => {
+      const el = document.getElementById('scene');
+      const mk = (type, x, y) => {
+        const t = new Touch({ identifier: 3, target: el, clientX: x, clientY: y });
+        el.dispatchEvent(new TouchEvent(type, { changedTouches: [t], touches: [t], bubbles: true, cancelable: true }));
+      };
+      const before = { x: window.tinyRoadHopper.state.player.x, row: window.tinyRoadHopper.state.player.row };
+      mk('touchstart', cx, cy);
+      window.dispatchEvent(new Event('blur'));
+      mk('touchmove', cx + 90, cy);
+      await new Promise((r) => setTimeout(r, 250));
+      const after = window.tinyRoadHopper.state.player;
+      return { before, x: after.x, row: after.row };
+    }, { cx, cy });
+    check(
+      `${label}: a blur mid-gesture does not fire a stale hop`,
+      Math.round(blurred.x) === Math.round(blurred.before.x) && blurred.row === blurred.before.row,
+      `x=${blurred.x} row=${blurred.row}`,
+    );
   }
 
   // Mute toggle

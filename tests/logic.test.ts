@@ -4,7 +4,7 @@ import {
   rowAt, slack, startRun, step, wrap,
 } from '../src/game/logic';
 import {
-  BEHIND_LIMIT, COIN_BONUS, HALF_COLS, HOP_TIME, LANE_PERIOD, PLAYER_W,
+  BEHIND_LIMIT, COIN_BONUS, GOAL_STEP, HALF_COLS, HOP_TIME, LANE_PERIOD, PLAYER_W,
   SAFE_START_ROWS, TRAIN_W, TRAIN_WARN,
 } from '../src/game/config';
 import type { Action, GameEvent, GameState, Row } from '../src/game/types';
@@ -43,6 +43,67 @@ function hop(s: GameState, a: Action): GameEvent[] {
   out.push(...settle(s));
   return out;
 }
+
+describe('themed segments and distance goals', () => {
+  it('keeps every generated row reachable across a long run', () => {
+    // Walk the generator far past the themed-segment length and assert the
+    // structural guarantees that make a route exist at all.
+    for (const seed of [1, 7, 42, 1015568748, 999]) {
+      const s = fresh(seed);
+      s.player.row = 0;
+      for (let target = 0; target < 400; target += 10) {
+        s.frontier = target;
+        s.player.row = target;
+        ensureRows(s);
+      }
+      let riverRun = 0;
+      let roadRun = 0;
+      for (const r of s.rows) {
+        riverRun = r.kind === 'river' ? riverRun + 1 : 0;
+        roadRun = r.kind === 'road' ? roadRun + 1 : 0;
+        expect(riverRun, `seed ${seed} row ${r.index} river run`).toBeLessThanOrEqual(3);
+        expect(roadRun, `seed ${seed} row ${r.index} road run`).toBeLessThanOrEqual(4);
+        // A river row with no platform is a wall, not a puzzle.
+        if (r.kind === 'river') expect(r.movers.length, `seed ${seed} row ${r.index}`).toBeGreaterThan(0);
+        // At least one column of every row must be enterable.
+        const free = [];
+        for (let c = -HALF_COLS; c <= HALF_COLS; c++) if (!r.blockers.some((b) => b.col === c)) free.push(c);
+        expect(free.length, `seed ${seed} row ${r.index} has no free column`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('visits more than one theme over a long run', () => {
+    const s = fresh(42);
+    const seen = new Set([s.theme]);
+    for (let target = 0; target < 300; target += 10) {
+      s.frontier = target;
+      s.player.row = target;
+      ensureRows(s);
+      seen.add(s.theme);
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it('names the next distance goal and never goes backwards', () => {
+    const s = fresh();
+    paveAll(s);
+    expect(s.goal).toBe(GOAL_STEP);
+    let last = s.goal;
+    const events: GameEvent[] = [];
+    for (let i = 0; i < GOAL_STEP + 2; i++) {
+      events.push(...hop(s, 'up'));
+      paveAll(s);
+      expect(s.goal).toBeGreaterThanOrEqual(last);
+      last = s.goal;
+    }
+    const met = events.filter((e) => e.type === 'goal');
+    expect(met.length).toBeGreaterThan(0);
+    expect(s.goal).toBeGreaterThan(s.maxRow);
+    // Goals are a marker, not a reward: reaching one must not change the score.
+    expect(s.score).toBe(s.maxRow + s.coins * COIN_BONUS);
+  });
+});
 
 describe('stream maths', () => {
   it('wraps positions into a single period centred on zero', () => {
@@ -211,6 +272,57 @@ describe('hopping', () => {
     settle(s);
     expect(s.player.x).toBeCloseTo(1);
     expect(s.player.row).toBe(1);
+    expect(s.queued).toBeNull();
+  });
+
+  it('refuses a buffered move that traffic has driven into meanwhile', () => {
+    const s = fresh();
+    paveAll(s);
+    applyAction(s, 'up');
+    applyAction(s, 'right');
+    expect(s.queued).toBe('right');
+    // The lane the buffered move aims at fills with a car during the hop - the
+    // player pressed before that car existed.
+    const landing = rowAt(s, 1)!;
+    landing.kind = 'road';
+    landing.speed = 4;
+    landing.phase = 0;
+    landing.movers = [{ p: 1, w: 1.6, kind: 'car', tint: 0.1 }];
+    settle(s);
+    settle(s);
+    // Refused, not driven into: the run is still alive and the hopper stayed put.
+    expect(s.phase).toBe('playing');
+    expect(Math.round(s.player.x)).toBe(0);
+    expect(s.queued).toBeNull();
+  });
+
+  it('still plays a directly pressed move into traffic - that is the player\'s call', () => {
+    const s = fresh();
+    paveAll(s);
+    const landing = rowAt(s, 1)!;
+    landing.kind = 'road';
+    landing.speed = 4;
+    landing.phase = 0;
+    landing.movers = [{ p: 0, w: 1.6, kind: 'car', tint: 0.1 }];
+    // Pressed directly, with no hop in flight, so it is not second-guessed.
+    applyAction(s, 'up');
+    expect(s.player.hop!.bump).toBe(false);
+    expect(s.player.hop!.toRow).toBe(1);
+  });
+
+  it('still re-checks a buffered move against the world before playing it', () => {
+    const s = fresh();
+    paveAll(s);
+    applyAction(s, 'up');
+    applyAction(s, 'right');
+    expect(s.queued).toBe('right');
+    // The cell the buffered move aims at becomes blocked mid-hop.
+    const landing = rowAt(s, 1)!;
+    landing.blockers.push({ col: 1, kind: 'rock', size: 1 });
+    settle(s);
+    settle(s);
+    // Refused, not walked into: the hopper bumps and stays put.
+    expect(Math.round(s.player.x)).toBe(0);
     expect(s.queued).toBeNull();
   });
 

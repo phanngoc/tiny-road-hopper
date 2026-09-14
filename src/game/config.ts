@@ -30,3 +30,7 @@ export const TRAIN_IDLE_MIN = 1.6;
 export const TRAIN_IDLE_MAX = 4.2;
 
 export const COIN_BONUS = 3;
+
+/** Spacing of the short distance goals, in rows. Purely a marker of progress:
+ *  there is no reward to lose and nothing to buy. */
+export const GOAL_STEP = 10;

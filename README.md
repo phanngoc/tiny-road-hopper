@@ -193,6 +193,80 @@ whatever the OS provides (`Trebuchet MS` / `Avenir Next` / `system-ui`).
 
 Code and content: MIT, see [LICENSE](LICENSE).
 
+## Mobile and visual polish (branch `feat/mobile-visual-polish`)
+
+Measured with `scripts/shots.mjs`, which serves a built bundle to headless
+Chromium, pins the world (a single `restart()` after load always yields seed
+1015568748) and plays a pilot to row 14, then audits every visible control with
+`elementFromPoint`. Baseline is the committed build at `e204d32`.
+
+| Measure | Before (`e204d32`) | After |
+| --- | --- | --- |
+| Touch targets under 44 CSS px | `pause-btn` 46x35, `mute-btn` 63x35 at all 5 viewports | none at any viewport |
+| Start-card word count (touch) | 99 | 49 |
+| Start-card word count (desktop) | 99 | 69 (keeps the key bindings) |
+| Horizontal overflow | 0 px | 0 px |
+| DPR cap | 2 mobile / 1 desktop | unchanged |
+| Console errors | 0 | 0 |
+| Pilot reaches row 14 alive | yes, 5/5 viewports | yes, 5/5 viewports |
+| Browser smoke suite | 62/62 | 64/64 (2 new input-release checks) |
+| 60 s frame interval p50 @390x844 | 66.7 ms | 66.6 ms |
+| 60 s frame interval p95 @390x844 | 133.3 ms | 133.3 ms |
+
+Viewports: 360x640, 390x844, 430x932, 844x390 (short landscape) and 1280x800.
+
+What changed:
+
+- **Held input is released.** A cancelled touch never delivers `touchend`, so a
+  half-finished swipe stayed armed and the next unrelated `touchmove` completed
+  it as a hop nobody asked for. `touchcancel`, `pointercancel`, `mouseleave`,
+  window `blur` and `visibilitychange` now all drop the gesture.
+- **Fair input buffering.** Single-slot buffering and its `canEnter` re-check
+  already existed and were correct; what was missing was a guard against the
+  world changing mid-hop. A press is still buffered across the whole hop, so a
+  deliberate fast sequence is never swallowed, but a buffered move is refused
+  and bumps if the cell it aims at has since been driven into by a car or a
+  passing train. `canEnter` only ever refused static blockers, so that hazard
+  was invisible to it. A directly pressed move is never second-guessed.
+  (A first attempt dropped early presses instead; it was reverted because it
+  cost responsiveness without the fairness.)
+- **Destination preview.** The landing cell is marked while a hop is in flight,
+  with a dashed marker for a buffered press behind it.
+- **Themed row segments and short goals.** Rows generate in themed segments
+  (meadow, highway, riverlands, crossing) that tilt the kind weights only; the
+  existing structural rules still run, and runs of one hazard kind are capped
+  (river 3, road 4) so no theme can chain past a crossable stretch. A short
+  distance goal every 10 rows shows in the HUD as `Next N`; reaching one names
+  the next and does not change the score, so there is nothing to protect.
+- **Landing and water effects.** Touching down kicks up a few flecks - a short
+  dusty puff on land, a wider pale spray on water. They are a fixed pool of 28
+  particles allocated once and reused in place, so there is no per-frame
+  allocation and the count cannot grow. Skipped under `prefers-reduced-motion`,
+  and renderer-only, so collision and scoring are untouched. See
+  `docs/shots/mobile-polish/fx-water-splash.png`.
+- **Vehicle contrast.** The warm body hues sit on `#3a3f47` asphalt below a 3:1
+  ratio, so vehicles now carry a dark rim. It is stroked around each face the
+  sprite actually draws rather than around a bounding box - a car is two boxes
+  of different widths, and a bounding stroke leaves bars sticking out past the
+  narrower cabin (that first attempt is reverted in `b595b15`).
+- **Reduced motion.** Screen shake and the throbbing danger vignette are
+  dropped under `prefers-reduced-motion`. Both live in the renderer and feed
+  nothing back into the simulation, so collision and scoring are unchanged.
+
+**About those frame intervals.** Both perf runs are marked `valid: false` by the
+harness. The intervals are quantised to multiples of 16.67 ms (66.7 = 4x,
+133.3 = 8x), which is headless Chromium throttling `requestAnimationFrame` - not
+the game loop taking 66 ms - and each run recorded 9 unexpected pilot deaths
+inside the sample. They are therefore usable only to show that this branch did
+**not** regress frame pacing against the baseline under identical conditions.
+**No FPS figure or 60 Hz claim is made**; that needs a headed browser or a
+physical device.
+
+These are emulated viewports on an Apple M1 host, **not** physical iPhone or
+Android devices. No real-device Safari or Android run has been done, and no
+frame-interval distribution has been captured on this branch, so no FPS
+guarantee is made.
+
 ## Known limitations
 
 - **Not a difficulty-tuned product.** The pacing curve is hand-picked and only

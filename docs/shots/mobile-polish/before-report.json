@@ -1,0 +1,227 @@
+[
+  {
+    "viewport": "360x640",
+    "played": {
+      "alive": true,
+      "row": 14,
+      "cause": null
+    },
+    "menuWords": 99,
+    "phase": "playing",
+    "row": 14,
+    "maxRow": 14,
+    "score": 14,
+    "coins": 0,
+    "slackRows": 5.7,
+    "renderScale": 2,
+    "horizontalOverflow": 0,
+    "verticalScroll": 0,
+    "menuControls": {
+      "small": [
+        "pause-btn=46x35",
+        "mute-btn=63x35"
+      ],
+      "unreachable": [
+        "pause-btn=covered-by-overlay",
+        "mute-btn=covered-by-overlay"
+      ]
+    },
+    "playControls": {
+      "small": [
+        "pause-btn=46x35",
+        "mute-btn=63x35"
+      ],
+      "unreachable": []
+    },
+    "over": {
+      "small": [],
+      "unreachable": []
+    },
+    "overInfo": {
+      "title": "Squashed",
+      "body": "You fell behind and were snatched by the hawk. 14 points · 14 rows · 0 coins · 14 hops New personal best!",
+      "cause": "fell behind and were snatched by the hawk"
+    },
+    "errors": []
+  },
+  {
+    "viewport": "390x844",
+    "played": {
+      "alive": true,
+      "row": 14,
+      "cause": null
+    },
+    "menuWords": 99,
+    "phase": "playing",
+    "row": 14,
+    "maxRow": 14,
+    "score": 14,
+    "coins": 0,
+    "slackRows": 4.92,
+    "renderScale": 2,
+    "horizontalOverflow": 0,
+    "verticalScroll": 0,
+    "menuControls": {
+      "small": [
+        "pause-btn=46x35",
+        "mute-btn=63x35"
+      ],
+      "unreachable": [
+        "pause-btn=covered-by-overlay",
+        "mute-btn=covered-by-overlay"
+      ]
+    },
+    "playControls": {
+      "small": [
+        "pause-btn=46x35",
+        "mute-btn=63x35"
+      ],
+      "unreachable": []
+    },
+    "over": {
+      "small": [],
+      "unreachable": []
+    },
+    "overInfo": {
+      "title": "Squashed",
+      "body": "You fell behind and were snatched by the hawk. 14 points · 14 rows · 0 coins · 14 hops New personal best!",
+      "cause": "fell behind and were snatched by the hawk"
+    },
+    "errors": []
+  },
+  {
+    "viewport": "430x932",
+    "played": {
+      "alive": true,
+      "row": 14,
+      "cause": null
+    },
+    "menuWords": 99,
+    "phase": "playing",
+    "row": 14,
+    "maxRow": 14,
+    "score": 14,
+    "coins": 0,
+    "slackRows": 4.99,
+    "renderScale": 2,
+    "horizontalOverflow": 0,
+    "verticalScroll": 0,
+    "menuControls": {
+      "small": [
+        "pause-btn=46x35",
+        "mute-btn=63x35"
+      ],
+      "unreachable": [
+        "pause-btn=covered-by-overlay",
+        "mute-btn=covered-by-overlay"
+      ]
+    },
+    "playControls": {
+      "small": [
+        "pause-btn=46x35",
+        "mute-btn=63x35"
+      ],
+      "unreachable": []
+    },
+    "over": {
+      "small": [],
+      "unreachable": []
+    },
+    "overInfo": {
+      "title": "Squashed",
+      "body": "You fell behind and were snatched by the hawk. 14 points · 14 rows · 0 coins · 14 hops New personal best!",
+      "cause": "fell behind and were snatched by the hawk"
+    },
+    "errors": []
+  },
+  {
+    "viewport": "844x390",
+    "played": {
+      "alive": true,
+      "row": 14,
+      "cause": null
+    },
+    "menuWords": 99,
+    "phase": "playing",
+    "row": 14,
+    "maxRow": 14,
+    "score": 14,
+    "coins": 0,
+    "slackRows": 4.99,
+    "renderScale": 2,
+    "horizontalOverflow": 0,
+    "verticalScroll": 0,
+    "menuControls": {
+      "small": [
+        "pause-btn=58x35",
+        "mute-btn=80x35"
+      ],
+      "unreachable": [
+        "pause-btn=covered-by-overlay",
+        "mute-btn=covered-by-overlay"
+      ]
+    },
+    "playControls": {
+      "small": [
+        "pause-btn=58x35",
+        "mute-btn=80x35"
+      ],
+      "unreachable": []
+    },
+    "over": {
+      "small": [],
+      "unreachable": []
+    },
+    "overInfo": {
+      "title": "Squashed",
+      "body": "You fell behind and were snatched by the hawk. 14 points · 14 rows · 0 coins · 14 hops New personal best!",
+      "cause": "fell behind and were snatched by the hawk"
+    },
+    "errors": []
+  },
+  {
+    "viewport": "1280x800",
+    "played": {
+      "alive": true,
+      "row": 14,
+      "cause": null
+    },
+    "menuWords": 99,
+    "phase": "playing",
+    "row": 14,
+    "maxRow": 14,
+    "score": 14,
+    "coins": 0,
+    "slackRows": 4.98,
+    "renderScale": 1,
+    "horizontalOverflow": 0,
+    "verticalScroll": 0,
+    "menuControls": {
+      "small": [
+        "pause-btn=58x35",
+        "mute-btn=80x35"
+      ],
+      "unreachable": [
+        "pause-btn=covered-by-overlay",
+        "mute-btn=covered-by-overlay"
+      ]
+    },
+    "playControls": {
+      "small": [
+        "pause-btn=58x35",
+        "mute-btn=80x35"
+      ],
+      "unreachable": []
+    },
+    "over": {
+      "small": [],
+      "unreachable": []
+    },
+    "overInfo": {
+      "title": "Squashed",
+      "body": "You fell behind and were snatched by the hawk. 14 points · 14 rows · 0 coins · 14 hops New personal best!",
+      "cause": "fell behind and were snatched by the hawk"
+    },
+    "errors": []
+  }
+]

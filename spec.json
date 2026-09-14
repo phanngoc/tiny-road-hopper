@@ -1,0 +1,138 @@
+{
+  "id": "tiny-road-hopper",
+  "title": "Tiny Road Hopper",
+  "version": "1.1.0",
+  "summary": "Original grid-hopping arcade game: cross endless roads, rivers and railways before the advancing frontier catches you.",
+  "license": "MIT",
+  "engine": {
+    "language": "TypeScript",
+    "bundler": "Vite",
+    "renderer": "Canvas 2D",
+    "dependencies": "none at runtime"
+  },
+  "controls": {
+    "keyboard": {
+      "hop": [
+        "ArrowUp/Down/Left/Right",
+        "WASD",
+        "Space (forward)"
+      ],
+      "pause": [
+        "P",
+        "Escape"
+      ],
+      "mute": [
+        "M"
+      ],
+      "confirm": [
+        "Enter"
+      ]
+    },
+    "touch": {
+      "hop": "swipe in the direction to hop",
+      "forward": "tap",
+      "swipeMinPx": 24,
+      "tapMaxMs": 350
+    },
+    "buffering": {
+      "slots": 1,
+      "acceptWindow": "the whole hop",
+      "note": "A press during a hop is always remembered, so a deliberate fast sequence is never swallowed. Fairness is enforced when the move is played: a buffered move is refused (bumps) if the cell it aims at has since been occupied by a car or a passing train. canEnter only refuses static blockers, so that hazard was invisible to it. A directly pressed move is never second-guessed."
+    }
+  },
+  "balance": {
+    "halfCols": 6,
+    "lanePeriod": 26,
+    "hopTime": 0.13,
+    "hopHeight": 0.55,
+    "playerWidth": 0.72,
+    "behindLimit": 5,
+    "creepBase": 0.5,
+    "creepPerRow": 0.0055,
+    "creepMax": 2.3,
+    "aheadRows": 26,
+    "keepBehind": 8,
+    "safeStartRows": 3,
+    "trainWarn": 1.45,
+    "trainWidth": 17,
+    "trainSpeed": 26,
+    "trainIdle": [
+      1.6,
+      4.2
+    ],
+    "coinBonus": 3,
+    "scoring": "score = furthest row reached + coins * COIN_BONUS",
+    "determinism": "Simulation is pure, DOM-free and clock-free, driven at a fixed 1/120 s timestep. Renderer state (camera, shake, reduced motion) never feeds back into it.",
+    "goalStep": 10,
+    "themes": "Rows are generated in themed segments (meadow, highway, riverlands, crossing) of 4-9 rows that only tilt the kind weights. Structural rules still run afterwards, and runs of one hazard kind are capped (river 3, road 4) so no theme can chain past a crossable stretch. The opening SAFE_START_ROWS stay in the starting meadow.",
+    "goals": "Short distance goals every GOAL_STEP rows, shown in the HUD as 'Next N'. Reaching one names the next and does not change the score - there is no streak, reward, ad or payment attached."
+  },
+  "accessibility": {
+    "touchTargetMinPx": 44,
+    "prefersReducedMotion": "Screen shake and the throbbing danger vignette are dropped; the danger tint stays steady.",
+    "inputRelease": "touchcancel, pointercancel, mouseleave, window blur and visibilitychange all drop a held gesture without firing it.",
+    "dprCap": 2,
+    "vehicleContrast": "Vehicles carry a dark rim (rgba(15,22,32,0.85)) stroked around each drawn face, because the warm body hues sit on #3a3f47 asphalt below a 3:1 ratio. The rim is stroked per face, not around a bounding box, so the two-part car silhouette is preserved.",
+    "landingEffects": "Landing dust and water splash are a fixed pool of 28 particles allocated once and reused in place: no per-frame allocation and the count cannot grow, so there is nothing to cull under load. Skipped entirely under prefers-reduced-motion. Renderer-only - the simulation never reads the pool, so collision and scoring are unaffected."
+  },
+  "assets": {
+    "images": "none - every sprite is drawn procedurally with Canvas 2D primitives in src/game/render.ts",
+    "audio": "none - all sounds are synthesised with the WebAudio API in src/game/audio.ts",
+    "fonts": "system font stack only",
+    "thirdParty": "none",
+    "attribution": "All visuals and audio are original to this repository and carry its MIT licence."
+  },
+  "measured": {
+    "harness": "scripts/shots.mjs - headless Chromium, pinned world (restart() once => seed 1015568748), pilot plays to row 14",
+    "viewports": [
+      "360x640",
+      "390x844",
+      "430x932",
+      "844x390",
+      "1280x800"
+    ],
+    "before": {
+      "commit": "e204d32",
+      "touchTargetsUnder44": "pause-btn 46x35, mute-btn 63x35 at all 5 viewports",
+      "menuWords": 99,
+      "horizontalOverflowPx": 0,
+      "dprCap": 2,
+      "consoleErrors": 0
+    },
+    "after": {
+      "touchTargetsUnder44": "none at any viewport",
+      "menuWordsTouch": 49,
+      "menuWordsDesktop": 69,
+      "horizontalOverflowPx": 0,
+      "dprCap": 2,
+      "consoleErrors": 0
+    },
+    "limitations": "Emulated Chromium viewports on an Apple M1 host. These are NOT physical iPhone or Android measurements, and no real-device Safari or Android browser run has been done. No 60 s frame-interval distribution has been captured for this branch yet, so no FPS claim is made.",
+    "perf": {
+      "harness": "scripts/perf.mjs - 3 s warm-up then a 60 s sample at 390x844 DPR2, headless Chromium 129 on darwin/arm64, pilot kept playing",
+      "before": {
+        "commit": "e204d32",
+        "frames": 885,
+        "seconds": 60.081,
+        "p50IntervalMs": 66.7,
+        "p95IntervalMs": 133.3,
+        "maxIntervalMs": 183.4
+      },
+      "after": {
+        "frames": 902,
+        "seconds": 60.047,
+        "p50IntervalMs": 66.6,
+        "p95IntervalMs": 133.3,
+        "maxIntervalMs": 133.4
+      },
+      "conclusion": "No measurable difference between the two builds under identical conditions, so the changes on this branch did not regress frame pacing.",
+      "whyNoFpsFigure": "Both runs are marked valid:false by the harness itself. The intervals are quantised to multiples of 16.67 ms (66.7 = 4x, 133.3 = 8x), which is headless Chromium throttling requestAnimationFrame, not the game loop taking 66 ms. Both runs also recorded 9 unexpected pilot deaths inside the sample. These numbers are therefore usable ONLY as a before/after comparison, NOT as an FPS figure, and no 60 Hz claim is made. A trustworthy figure needs a headed browser or a physical device."
+    }
+  },
+  "knownGaps": [
+    "Camera lookahead is still the original p.row + 0.55; not retuned.",
+    "No real-device Safari/Android testing.",
+    "scripts/smoke.mjs 'hopper boards a log' is intermittent: seen failing twice on this branch and not in four consecutive baseline runs. The sample is too small to attribute, and the change cannot plausibly reach river boarding (the new check covers road and rail only). Unresolved, not suppressed.",
+    "No trustworthy FPS figure: headless Chromium throttles requestAnimationFrame to quantised multiples of the vsync interval, so scripts/perf.mjs can compare two builds but cannot establish 60 Hz. Needs a headed browser or a physical device."
+  ]
+}

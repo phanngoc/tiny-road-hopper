@@ -1,11 +1,11 @@
 /** The whole simulation: pure, deterministic, DOM-free and clock-free, so the
  *  unit tests drive it exactly like the browser does. */
 import {
-  AHEAD_ROWS, BEHIND_LIMIT, COIN_BONUS, CREEP_BASE, CREEP_MAX, CREEP_PER_ROW,
+  AHEAD_ROWS, BEHIND_LIMIT, COIN_BONUS, GOAL_STEP, CREEP_BASE, CREEP_MAX, CREEP_PER_ROW,
   HALF_COLS, HOP_TIME, KEEP_BEHIND, LANE_PERIOD, PLAYER_W, SAFE_START_ROWS,
   TRAIN_IDLE_MAX, TRAIN_IDLE_MIN, TRAIN_SPEED, TRAIN_W, TRAIN_WARN,
 } from './config';
-import type { Action, GameEvent, GameState, Mover, Row, RowKind } from './types';
+import type { Action, GameEvent, GameState, Mover, Row, RowKind, Theme } from './types';
 
 /* ------------------------------------------------------------------ random */
 
@@ -48,15 +48,55 @@ function chooseKind(s: GameState, prev: Row | undefined, index: number): RowKind
   if (prevKind === 'river' && nextRandom(s) < 0.45) return 'grass';
   if (prevKind === 'rail') return 'grass';
   // Continue a road or river band so traffic reads as multi-lane.
-  if ((prevKind === 'road' || prevKind === 'river') && nextRandom(s) < 0.5 + d * 0.18) return prevKind;
-  const r = nextRandom(s);
-  const grassShare = 0.42 - d * 0.16;
-  const roadShare = grassShare + 0.34 + d * 0.04;
-  const riverShare = roadShare + 0.16 + d * 0.05;
-  if (r < grassShare) return 'grass';
-  if (r < roadShare) return 'road';
-  if (r < riverShare) return 'river';
-  return 'rail';
+  if ((prevKind === 'road' || prevKind === 'river') && nextRandom(s) < 0.5 + d * 0.18) {
+    // Band continuation must still respect the run cap, or a long themed
+    // stretch can chain past it through this branch alone.
+    const capped = MAX_RUN[prevKind];
+    if (capped === undefined || runLength(s, prevKind) < capped) return prevKind;
+    return 'grass';
+  }
+  // Theme weights, nudged by difficulty away from plain grass.
+  const w = THEMES[s.theme].w;
+  const grassShare = Math.max(0.12, w[0] - d * 0.16);
+  const roadShare = grassShare + w[1] + d * 0.04;
+  const riverShare = roadShare + w[2] + d * 0.05;
+  const total = riverShare + w[3];
+  const r = nextRandom(s) * total;
+  const kind: RowKind = r < grassShare ? 'grass' : r < roadShare ? 'road' : r < riverShare ? 'river' : 'rail';
+  // Never let a theme chain one hazard past its cap: fall back to grass, which
+  // is always crossable.
+  const cap = MAX_RUN[kind];
+  if (cap !== undefined && runLength(s, kind) >= cap) return 'grass';
+  return kind;
+}
+
+/** Relative weights for grass / road / river / rail inside a theme. A theme
+ *  only tilts the mix; the structural rules after it still apply, so a route
+ *  always exists. */
+const THEMES: Record<Theme, { w: [number, number, number, number]; rows: [number, number] }> = {
+  meadow: { w: [0.62, 0.22, 0.10, 0.06], rows: [4, 7] },
+  highway: { w: [0.24, 0.58, 0.08, 0.10], rows: [5, 8] },
+  riverlands: { w: [0.30, 0.14, 0.48, 0.08], rows: [4, 7] },
+  crossing: { w: [0.34, 0.30, 0.16, 0.20], rows: [5, 9] },
+};
+const THEME_IDS: readonly Theme[] = ['meadow', 'highway', 'riverlands', 'crossing'];
+
+/** Longest run of one hazard kind a theme is allowed to produce. Without this a
+ *  river-heavy stretch could chain far enough that a slow platform row leaves
+ *  no reachable landing before the frontier arrives. */
+const MAX_RUN: Partial<Record<RowKind, number>> = { river: 3, road: 4 };
+
+function runLength(s: GameState, kind: RowKind): number {
+  let n = 0;
+  for (let i = s.rows.length - 1; i >= 0 && s.rows[i]!.kind === kind; i--) n++;
+  return n;
+}
+
+/** Move to the next themed segment, avoiding an immediate repeat. */
+function nextTheme(s: GameState): Theme {
+  let t = pick(s, THEME_IDS);
+  if (t === s.theme) t = THEME_IDS[(THEME_IDS.indexOf(t) + 1 + randInt(s, 0, 2)) % THEME_IDS.length]!;
+  return t;
 }
 
 function fillStream(s: GameState, movers: Mover[], widths: readonly number[], kinds: readonly Mover['kind'][], gapMin: number, gapMax: number): void {
@@ -135,6 +175,12 @@ export function ensureRows(s: GameState): void {
   const target = Math.ceil(Math.max(s.frontier, s.player.row) + AHEAD_ROWS);
   while (s.firstRow + s.rows.length <= target) {
     const index = s.firstRow + s.rows.length;
+    // The opening rows stay in the starting meadow so the first hops are calm.
+    if (index > SAFE_START_ROWS && --s.themeLeft <= 0) {
+      s.theme = nextTheme(s);
+      const span = THEMES[s.theme].rows;
+      s.themeLeft = randInt(s, span[0], span[1]);
+    }
     s.rows.push(makeRow(s, index, s.rows[s.rows.length - 1]));
   }
   const cut = Math.floor(Math.min(s.frontier, s.player.row)) - KEEP_BEHIND - s.firstRow;
@@ -154,6 +200,7 @@ export function createState(seed: number): GameState {
     // screen below the hopper has no rows to draw and shows through as a chasm.
     rows: [], firstRow: -KEEP_BEHIND, frontier: -BEHIND_LIMIT, maxRow: 0,
     coins: 0, score: 0, hops: 0, time: 0, cause: null, queued: null,
+    theme: 'meadow', themeLeft: 6, goal: GOAL_STEP, goalsMet: 0,
     rng: (seed | 0) || 1,
   };
   ensureRows(s);
@@ -185,12 +232,31 @@ export function canEnter(s: GameState, col: number, row: number): boolean {
   return !r.blockers.some((b) => b.col === col);
 }
 
-export function applyAction(s: GameState, a: Action): GameEvent[] {
+/** Is landing at (col, row) an instant kill right now? Only consulted for a
+ *  move that was buffered during a hop: the player chose it before this hazard
+ *  existed, so playing it unchanged would be the game stepping them into
+ *  traffic they never saw. A move pressed directly is still the player's own
+ *  call and is never second-guessed. */
+function lethalNow(s: GameState, col: number, row: number): boolean {
+  const r = rowAt(s, row);
+  if (!r) return false;
+  if (r.kind === 'road') {
+    return r.movers.some((m) => Math.abs(col - moverX(r, m)) < (m.w + PLAYER_W) / 2);
+  }
+  if (r.kind === 'rail') {
+    return r.train === 'passing' && Math.abs(col - r.trainX) < (TRAIN_W + PLAYER_W) / 2;
+  }
+  return false;
+}
+
+export function applyAction(s: GameState, a: Action, buffered = false): GameEvent[] {
   const out: GameEvent[] = [];
   if (s.phase !== 'playing') return out;
   const p = s.player;
   // One buffered move keeps fast taps feeling responsive without letting the
-  // player bank a queue of hops.
+  // player bank a queue of hops. The whole hop can buffer, so a deliberate fast
+  // sequence is never swallowed; fairness is enforced when the move is played
+  // instead, by `buffered` below.
   if (p.hop && p.hop.t < 1) {
     s.queued = a;
     return out;
@@ -203,7 +269,7 @@ export function applyAction(s: GameState, a: Action): GameEvent[] {
   else if (a === 'left') col -= 1;
   else col += 1;
   p.face = a;
-  if (!canEnter(s, col, row)) {
+  if (!canEnter(s, col, row) || (buffered && lethalNow(s, col, row))) {
     p.hop = { fromX: p.x, fromRow: p.row, toX: p.x, toRow: p.row, t: 0, bump: true };
     out.push({ type: 'bump' });
     return out;
@@ -279,7 +345,7 @@ export function step(s: GameState, dt: number): GameEvent[] {
       if (s.queued) {
         const q = s.queued;
         s.queued = null;
-        out.push(...applyAction(s, q));
+        out.push(...applyAction(s, q, true));
       }
     }
   }
@@ -297,6 +363,13 @@ export function step(s: GameState, dt: number): GameEvent[] {
   if (p.row > s.maxRow) {
     s.maxRow = p.row;
     if (s.maxRow % 25 === 0) out.push({ type: 'milestone', row: s.maxRow });
+    // Short distance goals: reaching one just names the next. Missing one costs
+    // nothing, so there is no streak to protect.
+    if (s.maxRow >= s.goal) {
+      s.goalsMet++;
+      s.goal = (Math.floor(s.maxRow / GOAL_STEP) + 1) * GOAL_STEP;
+      out.push({ type: 'goal', row: s.maxRow, total: s.goalsMet });
+    }
   }
   s.score = s.maxRow + s.coins * COIN_BONUS;
 

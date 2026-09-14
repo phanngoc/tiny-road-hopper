@@ -26,17 +26,39 @@ export class Renderer {
   private shake = 0;
   private t = 0;
   private started = false;
+  /** Screen shake and the throbbing danger vignette are motion for its own
+   *  sake, so they are dropped when the OS asks for reduced motion. Nothing
+   *  here feeds the simulation, so collision and scoring are unaffected. */
+  private reducedMotion = false;
+  /** Landing dust and water splashes. A fixed pool allocated once and reused in
+   *  place: no per-frame allocation, and the count can never grow, so there is
+   *  nothing to cull under load. Purely cosmetic - the simulation never reads
+   *  it, so collision and scoring are unaffected. */
+  private readonly fx: Array<{ x: number; row: number; vx: number; vy: number; life: number; water: boolean }> =
+    Array.from({ length: 28 }, () => ({ x: 0, row: 0, vx: 0, vy: 0, life: 0, water: false }));
+  private fxNext = 0;
+  private wasHopping = false;
 
-  constructor(private ctx: CanvasRenderingContext2D) {}
+  constructor(private ctx: CanvasRenderingContext2D) {
+    const q = matchMedia('(prefers-reduced-motion: reduce)');
+    this.reducedMotion = q.matches;
+    q.addEventListener('change', (e) => {
+      this.reducedMotion = e.matches;
+      if (this.reducedMotion) this.shake = 0;
+    });
+  }
 
   reset(): void {
     this.camRow = 0;
     this.camX = 0;
     this.shake = 0;
     this.started = false;
+    this.wasHopping = false;
+    for (const f of this.fx) f.life = 0;
   }
 
   kick(power: number): void {
+    if (this.reducedMotion) return;
     this.shake = Math.max(this.shake, power);
   }
 
@@ -66,6 +88,59 @@ export class Renderer {
     this.camRow += (targetRow - this.camRow) * k;
     this.camX += (targetX - this.camX) * k;
     this.shake = Math.max(0, this.shake - dt * 2.2);
+
+    // Landing edge: the hop that was in flight last frame has finished.
+    const hopping = p.hop !== null && !p.hop.bump;
+    if (this.wasHopping && !hopping && state.phase === 'playing') {
+      const landed = rowAt(state, p.row);
+      this.spawnLanding(p.x, p.row, landed?.kind === 'river');
+    }
+    this.wasHopping = hopping;
+    for (const f of this.fx) {
+      if (f.life <= 0) continue;
+      f.life -= dt;
+      f.x += f.vx * dt;
+      f.row += f.vy * dt;
+      f.vy -= dt * 2.4;
+    }
+  }
+
+  /** A few flecks kicked up where the hopper touched down. Water gets a wider,
+   *  slower spray; land gets a short dusty puff. */
+  private spawnLanding(x: number, row: number, water: boolean): void {
+    if (this.reducedMotion) return;
+    const n = water ? 6 : 4;
+    for (let i = 0; i < n; i++) {
+      // Reuse the pool slot-by-slot: the oldest in-flight fleck is overwritten
+      // rather than the array growing.
+      const f = this.fx[this.fxNext]!;
+      this.fxNext = (this.fxNext + 1) % this.fx.length;
+      const a = (i / n) * Math.PI * 2 + row * 0.7;
+      const speed = water ? 2.2 : 1.6;
+      f.x = x;
+      f.row = row;
+      f.vx = Math.cos(a) * speed;
+      // Stay low: these read as spray at the surface, not as a fountain.
+      f.vy = Math.sin(a) * speed * 0.3 + (water ? 0.7 : 0.5);
+      f.life = water ? 0.55 : 0.45;
+      f.water = water;
+    }
+  }
+
+  private drawFx(sx: (x: number) => number, gy: (r: number) => number, tile: number, rowH: number): void {
+    const ctx = this.ctx;
+    for (const f of this.fx) {
+      if (f.life <= 0) continue;
+      const fade = Math.min(1, f.life / (f.water ? 0.55 : 0.45));
+      const r = tile * (f.water ? 0.17 : 0.15) * fade;
+      if (r <= 0.2) continue;
+      ctx.fillStyle = f.water
+        ? `rgba(214,238,255,${(fade * 0.9).toFixed(3)})`
+        : `rgba(238,230,205,${(fade * 0.75).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(sx(f.x), gy(f.row) - rowH * 0.2, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   private rowH(vp: Viewport): number {
@@ -124,9 +199,51 @@ export class Renderer {
     // (only possible in the frame it dies) draw it anyway so it never vanishes.
     if (!rowAt(state, playerRow)) this.drawPlayer(state, sx, gy, tile, rowH);
 
+    this.drawFx(sx, gy, tile, rowH);
+    this.drawTarget(state, sx, gy, tile, rowH);
     this.drawHawk(state, sx, gy, tile, rowH, vp);
     ctx.setTransform(vp.dpr, 0, 0, vp.dpr, 0, 0);
     this.drawVignette(state, vp);
+  }
+
+  /** Marks the cell the hopper is committed to, so a hop in flight - and a
+   *  press buffered behind it - has a visible destination instead of being
+   *  something the player only finds out about on landing. */
+  private drawTarget(
+    state: GameState, sx: (x: number) => number, gy: (r: number) => number,
+    tile: number, rowH: number,
+  ): void {
+    const p = state.player;
+    if (state.phase !== 'playing') return;
+    const hop = p.hop;
+    if (!hop || hop.bump) return;
+    const ctx = this.ctx;
+    // The live hop's landing cell, then the buffered press's cell beyond it.
+    const cells: Array<{ x: number; row: number; strong: boolean }> = [
+      { x: hop.toX, row: hop.toRow, strong: true },
+    ];
+    if (state.queued) {
+      const q = state.queued;
+      cells.push({
+        x: hop.toX + (q === 'left' ? -1 : q === 'right' ? 1 : 0),
+        row: hop.toRow + (q === 'up' ? 1 : q === 'down' ? -1 : 0),
+        strong: false,
+      });
+    }
+    for (const c of cells) {
+      const cx = sx(c.x);
+      const cy = gy(c.row) - rowH * 0.18;
+      const w = tile * 0.62;
+      const h = rowH * 0.34;
+      ctx.save();
+      ctx.lineWidth = Math.max(1.5, tile * 0.055);
+      ctx.strokeStyle = c.strong ? 'rgba(255,255,255,0.85)' : 'rgba(255,215,94,0.75)';
+      if (!c.strong) ctx.setLineDash([tile * 0.14, tile * 0.1]);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   /* --------------------------------------------------------------- terrain */
@@ -276,14 +393,18 @@ export class Renderer {
     const w = m.w * tile;
     const hues = ['#e05a4c', '#e0a84c', '#4cc0e0', '#b46ce0', '#7ce06c'];
     const body = hues[Math.floor(m.tint * hues.length) % hues.length]!;
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fillRect(cx - w / 2, ground - rowH * 0.1, w, rowH * 0.12);
+    // The warm body hues sit on #3a3f47 asphalt below a 3:1 ratio, so this dark
+    // rim is a readability requirement, not decoration. Dark rather than white:
+    // it separates the car from the road without bleaching the toy palette.
+    const rim = 'rgba(15,22,32,0.85)';
     if (m.kind === 'truck') {
-      this.box(cx + dir * w * 0.34, ground - rowH * 0.16, w * 0.3, rowH * 0.42, tile * 0.62, body, this.shade(body, 0.72));
-      this.box(cx - dir * w * 0.2, ground - rowH * 0.16, w * 0.68, rowH * 0.44, tile * 0.8, '#dfe4ea', '#aeb6bf');
+      this.box(cx + dir * w * 0.34, ground - rowH * 0.16, w * 0.3, rowH * 0.42, tile * 0.62, body, this.shade(body, 0.72), rim);
+      this.box(cx - dir * w * 0.2, ground - rowH * 0.16, w * 0.68, rowH * 0.44, tile * 0.8, '#dfe4ea', '#aeb6bf', rim);
     } else {
-      this.box(cx, ground - rowH * 0.16, w, rowH * 0.44, tile * 0.36, body, this.shade(body, 0.72));
-      this.box(cx - dir * w * 0.06, ground - rowH * 0.16 - tile * 0.3, w * 0.62, rowH * 0.36, tile * 0.3, this.shade(body, 1.12), '#25313d');
+      this.box(cx, ground - rowH * 0.16, w, rowH * 0.44, tile * 0.36, body, this.shade(body, 0.72), rim);
+      this.box(cx - dir * w * 0.06, ground - rowH * 0.16 - tile * 0.3, w * 0.62, rowH * 0.36, tile * 0.3, this.shade(body, 1.12), '#25313d', rim);
     }
     // Headlights on the leading end read the direction of travel at a glance.
     ctx.fillStyle = '#fff3b0';
@@ -446,7 +567,9 @@ export class Renderer {
     const danger = Math.max(0, 1 - slack(state) / 2.6);
     if (danger <= 0 || state.phase !== 'playing') return;
     const ctx = this.ctx;
-    const pulse = 0.35 + 0.25 * Math.sin(this.t * 9);
+    // Steady instead of throbbing under reduced motion: the danger still reads,
+    // it just stops pulsing.
+    const pulse = this.reducedMotion ? 0.45 : 0.35 + 0.25 * Math.sin(this.t * 9);
     const g = ctx.createRadialGradient(vp.w / 2, vp.h / 2, Math.min(vp.w, vp.h) * 0.25, vp.w / 2, vp.h / 2, Math.max(vp.w, vp.h) * 0.7);
     g.addColorStop(0, 'rgba(255,60,50,0)');
     g.addColorStop(1, `rgba(255,60,50,${(danger * pulse).toFixed(3)})`);
@@ -456,13 +579,26 @@ export class Renderer {
 
   /* --------------------------------------------------------------- helpers */
 
-  /** One chunky solid: a front face plus a lighter top face. */
-  private box(cx: number, groundY: number, w: number, depth: number, height: number, top: string, front: string): void {
+  /** One chunky solid: a front face plus a lighter top face. `outline` strokes
+   *  the silhouette the two faces actually cover, which is a single rect from
+   *  the top face's top edge down to the ground. Stroking a bounding box around
+   *  a multi-part sprite instead leaves bars sticking out past the narrower
+   *  part, so callers outline each part separately. */
+  private box(
+    cx: number, groundY: number, w: number, depth: number, height: number,
+    top: string, front: string, outline?: string,
+  ): void {
     const ctx = this.ctx;
     ctx.fillStyle = front;
     ctx.fillRect(cx - w / 2, groundY - height, w, height);
     ctx.fillStyle = top;
     ctx.fillRect(cx - w / 2, groundY - height - depth, w, depth + 1);
+    if (!outline) return;
+    ctx.save();
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = Math.max(1, Math.min(w * 0.045, 2.5));
+    ctx.strokeRect(cx - w / 2, groundY - height - depth, w, height + depth);
+    ctx.restore();
   }
 
   private shade(hex: string, f: number): string {

@@ -64,6 +64,14 @@ export function attachInput(target: HTMLElement, h: InputHandlers): () => void {
     if (start && !fired && performance.now() - start.t < 350) h.action('up');
     start = null;
   };
+  /** Drop the gesture without firing it. A touch that the browser takes away
+   *  (scroll takeover, call banner, app switch) never delivers touchend, so
+   *  without this the half-finished swipe stays armed and the next unrelated
+   *  touchmove completes it as a hop the player never asked for. */
+  const cancel = () => {
+    start = null;
+    fired = false;
+  };
 
   const onTouchStart = (e: TouchEvent) => {
     const t = e.changedTouches[0];
@@ -76,21 +84,35 @@ export function attachInput(target: HTMLElement, h: InputHandlers): () => void {
   };
   const onMouseDown = (e: MouseEvent) => down(e.clientX, e.clientY);
   const onMouseMove = (e: MouseEvent) => move(e.clientX, e.clientY);
+  const onHidden = () => {
+    if (document.hidden) cancel();
+  };
 
   target.addEventListener('touchstart', onTouchStart, { passive: true });
   target.addEventListener('touchmove', onTouchMove, { passive: false });
   target.addEventListener('touchend', up);
+  target.addEventListener('touchcancel', cancel);
+  target.addEventListener('pointercancel', cancel);
   target.addEventListener('mousedown', onMouseDown);
   target.addEventListener('mousemove', onMouseMove);
   target.addEventListener('mouseup', up);
+  // The pointer leaving the surface mid-gesture is a cancel, not a tap.
+  target.addEventListener('mouseleave', cancel);
+  window.addEventListener('blur', cancel);
+  document.addEventListener('visibilitychange', onHidden);
 
   return () => {
     window.removeEventListener('keydown', onKey);
     target.removeEventListener('touchstart', onTouchStart);
     target.removeEventListener('touchmove', onTouchMove);
     target.removeEventListener('touchend', up);
+    target.removeEventListener('touchcancel', cancel);
+    target.removeEventListener('pointercancel', cancel);
     target.removeEventListener('mousedown', onMouseDown);
     target.removeEventListener('mousemove', onMouseMove);
     target.removeEventListener('mouseup', up);
+    target.removeEventListener('mouseleave', cancel);
+    window.removeEventListener('blur', cancel);
+    document.removeEventListener('visibilitychange', onHidden);
   };
 }
