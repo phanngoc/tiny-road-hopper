@@ -230,6 +230,12 @@ What changed:
   cost responsiveness without the fairness.)
 - **Destination preview.** The landing cell is marked while a hop is in flight,
   with a dashed marker for a buffered press behind it.
+- **Themed row segments and short goals.** Rows generate in themed segments
+  (meadow, highway, riverlands, crossing) that tilt the kind weights only; the
+  existing structural rules still run, and runs of one hazard kind are capped
+  (river 3, road 4) so no theme can chain past a crossable stretch. A short
+  distance goal every 10 rows shows in the HUD as `Next N`; reaching one names
+  the next and does not change the score, so there is nothing to protect.
 - **Vehicle contrast.** The warm body hues sit on `#3a3f47` asphalt below a 3:1
   ratio, so vehicles now carry a dark rim. It is stroked around each face the
   sprite actually draws rather than around a bounding box - a car is two boxes

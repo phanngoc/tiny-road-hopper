@@ -62,7 +62,10 @@
     ],
     "coinBonus": 3,
     "scoring": "score = furthest row reached + coins * COIN_BONUS",
-    "determinism": "Simulation is pure, DOM-free and clock-free, driven at a fixed 1/120 s timestep. Renderer state (camera, shake, reduced motion) never feeds back into it."
+    "determinism": "Simulation is pure, DOM-free and clock-free, driven at a fixed 1/120 s timestep. Renderer state (camera, shake, reduced motion) never feeds back into it.",
+    "goalStep": 10,
+    "themes": "Rows are generated in themed segments (meadow, highway, riverlands, crossing) of 4-9 rows that only tilt the kind weights. Structural rules still run afterwards, and runs of one hazard kind are capped (river 3, road 4) so no theme can chain past a crossable stretch. The opening SAFE_START_ROWS stay in the starting meadow.",
+    "goals": "Short distance goals every GOAL_STEP rows, shown in the HUD as 'Next N'. Reaching one names the next and does not change the score - there is no streak, reward, ad or payment attached."
   },
   "accessibility": {
     "touchTargetMinPx": 44,
@@ -108,7 +111,6 @@
   "knownGaps": [
     "No 60 s perf run (frame-interval distribution, heap trend) on this branch yet.",
     "Camera lookahead is still the original p.row + 0.55; not retuned.",
-    "No short distance goals or themed row segments yet.",
     "No real-device Safari/Android testing.",
     "scripts/smoke.mjs 'hopper boards a log' is intermittent: seen failing twice on this branch and not in four consecutive baseline runs. The sample is too small to attribute, and the change cannot plausibly reach river boarding (the new check covers road and rail only). Unresolved, not suppressed."
   ]

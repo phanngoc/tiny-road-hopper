@@ -1,4 +1,7 @@
 export type RowKind = 'grass' | 'road' | 'river' | 'rail';
+/** A themed stretch of rows. Purely a generation bias: every theme still goes
+ *  through the same reachability rules, so no theme can seal the field. */
+export type Theme = 'meadow' | 'highway' | 'riverlands' | 'crossing';
 export type Action = 'up' | 'down' | 'left' | 'right';
 export type Phase = 'menu' | 'playing' | 'paused' | 'over';
 export type TrainState = 'idle' | 'warn' | 'passing';
@@ -75,6 +78,13 @@ export interface GameState {
   time: number;
   cause: string | null;
   queued: Action | null;
+  /** Current themed segment and how many more rows it covers. */
+  theme: Theme;
+  themeLeft: number;
+  /** Next short distance goal, in rows. Optional flavour: missing it costs
+   *  nothing, so there is no streak to protect and nothing to buy. */
+  goal: number;
+  goalsMet: number;
   rng: number;
 }
 
@@ -83,6 +93,8 @@ export type GameEvent =
   | { type: 'bump' }
   | { type: 'coin'; total: number }
   | { type: 'milestone'; row: number }
+  | { type: 'goal'; row: number; total: number }
+  | { type: 'theme'; theme: Theme }
   | { type: 'train-warn' }
   | { type: 'board'; kind: 'log' | 'pad' }
   | { type: 'over'; cause: string };

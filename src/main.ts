@@ -16,6 +16,7 @@ const game = new Game({
   score: el('score'),
   best: el('best'),
   rows: el('rows'),
+  rowsLabel: el('rows-label'),
   coins: el('coins'),
   danger: el('danger'),
   callout: el('callout'),

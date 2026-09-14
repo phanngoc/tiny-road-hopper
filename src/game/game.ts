@@ -21,6 +21,7 @@ interface Dom {
   score: HTMLElement;
   best: HTMLElement;
   rows: HTMLElement;
+  rowsLabel: HTMLElement;
   coins: HTMLElement;
   danger: HTMLElement;
   callout: HTMLElement;
@@ -181,6 +182,12 @@ export class Game {
         case 'board':
           this.sfx.board();
           break;
+        case 'goal':
+          this.sfx.coin();
+          this.flash(`Goal ${e.row}!`);
+          break;
+        case 'theme':
+          break;
         case 'milestone':
           this.sfx.milestone();
           this.flash(`${e.row} rows!`);
@@ -235,6 +242,7 @@ export class Game {
     this.dom.score.textContent = String(Math.floor(s.score));
     this.dom.best.textContent = String(Math.max(this.bestScore, Math.floor(s.score)));
     this.dom.rows.textContent = String(s.maxRow);
+    this.dom.rowsLabel.textContent = s.phase === 'playing' ? `Next ${s.goal}` : 'Rows';
     this.dom.coins.textContent = String(s.coins);
     const left = slack(s);
     const pct = Math.max(0, Math.min(1, left / BEHIND_LIMIT));
