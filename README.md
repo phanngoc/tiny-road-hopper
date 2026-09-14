@@ -238,6 +238,12 @@ What changed:
   (river 3, road 4) so no theme can chain past a crossable stretch. A short
   distance goal every 10 rows shows in the HUD as `Next N`; reaching one names
   the next and does not change the score, so there is nothing to protect.
+- **Landing and water effects.** Touching down kicks up a few flecks - a short
+  dusty puff on land, a wider pale spray on water. They are a fixed pool of 28
+  particles allocated once and reused in place, so there is no per-frame
+  allocation and the count cannot grow. Skipped under `prefers-reduced-motion`,
+  and renderer-only, so collision and scoring are untouched. See
+  `docs/shots/mobile-polish/fx-water-splash.png`.
 - **Vehicle contrast.** The warm body hues sit on `#3a3f47` asphalt below a 3:1
   ratio, so vehicles now carry a dark rim. It is stroked around each face the
   sprite actually draws rather than around a bounding box - a car is two boxes

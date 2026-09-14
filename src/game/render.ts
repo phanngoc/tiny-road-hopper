@@ -30,6 +30,14 @@ export class Renderer {
    *  sake, so they are dropped when the OS asks for reduced motion. Nothing
    *  here feeds the simulation, so collision and scoring are unaffected. */
   private reducedMotion = false;
+  /** Landing dust and water splashes. A fixed pool allocated once and reused in
+   *  place: no per-frame allocation, and the count can never grow, so there is
+   *  nothing to cull under load. Purely cosmetic - the simulation never reads
+   *  it, so collision and scoring are unaffected. */
+  private readonly fx: Array<{ x: number; row: number; vx: number; vy: number; life: number; water: boolean }> =
+    Array.from({ length: 28 }, () => ({ x: 0, row: 0, vx: 0, vy: 0, life: 0, water: false }));
+  private fxNext = 0;
+  private wasHopping = false;
 
   constructor(private ctx: CanvasRenderingContext2D) {
     const q = matchMedia('(prefers-reduced-motion: reduce)');
@@ -45,6 +53,8 @@ export class Renderer {
     this.camX = 0;
     this.shake = 0;
     this.started = false;
+    this.wasHopping = false;
+    for (const f of this.fx) f.life = 0;
   }
 
   kick(power: number): void {
@@ -78,6 +88,59 @@ export class Renderer {
     this.camRow += (targetRow - this.camRow) * k;
     this.camX += (targetX - this.camX) * k;
     this.shake = Math.max(0, this.shake - dt * 2.2);
+
+    // Landing edge: the hop that was in flight last frame has finished.
+    const hopping = p.hop !== null && !p.hop.bump;
+    if (this.wasHopping && !hopping && state.phase === 'playing') {
+      const landed = rowAt(state, p.row);
+      this.spawnLanding(p.x, p.row, landed?.kind === 'river');
+    }
+    this.wasHopping = hopping;
+    for (const f of this.fx) {
+      if (f.life <= 0) continue;
+      f.life -= dt;
+      f.x += f.vx * dt;
+      f.row += f.vy * dt;
+      f.vy -= dt * 2.4;
+    }
+  }
+
+  /** A few flecks kicked up where the hopper touched down. Water gets a wider,
+   *  slower spray; land gets a short dusty puff. */
+  private spawnLanding(x: number, row: number, water: boolean): void {
+    if (this.reducedMotion) return;
+    const n = water ? 6 : 4;
+    for (let i = 0; i < n; i++) {
+      // Reuse the pool slot-by-slot: the oldest in-flight fleck is overwritten
+      // rather than the array growing.
+      const f = this.fx[this.fxNext]!;
+      this.fxNext = (this.fxNext + 1) % this.fx.length;
+      const a = (i / n) * Math.PI * 2 + row * 0.7;
+      const speed = water ? 2.2 : 1.6;
+      f.x = x;
+      f.row = row;
+      f.vx = Math.cos(a) * speed;
+      // Stay low: these read as spray at the surface, not as a fountain.
+      f.vy = Math.sin(a) * speed * 0.3 + (water ? 0.7 : 0.5);
+      f.life = water ? 0.55 : 0.45;
+      f.water = water;
+    }
+  }
+
+  private drawFx(sx: (x: number) => number, gy: (r: number) => number, tile: number, rowH: number): void {
+    const ctx = this.ctx;
+    for (const f of this.fx) {
+      if (f.life <= 0) continue;
+      const fade = Math.min(1, f.life / (f.water ? 0.55 : 0.45));
+      const r = tile * (f.water ? 0.17 : 0.15) * fade;
+      if (r <= 0.2) continue;
+      ctx.fillStyle = f.water
+        ? `rgba(214,238,255,${(fade * 0.9).toFixed(3)})`
+        : `rgba(238,230,205,${(fade * 0.75).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(sx(f.x), gy(f.row) - rowH * 0.2, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   private rowH(vp: Viewport): number {
@@ -136,6 +199,7 @@ export class Renderer {
     // (only possible in the frame it dies) draw it anyway so it never vanishes.
     if (!rowAt(state, playerRow)) this.drawPlayer(state, sx, gy, tile, rowH);
 
+    this.drawFx(sx, gy, tile, rowH);
     this.drawTarget(state, sx, gy, tile, rowH);
     this.drawHawk(state, sx, gy, tile, rowH, vp);
     ctx.setTransform(vp.dpr, 0, 0, vp.dpr, 0, 0);
