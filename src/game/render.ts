@@ -26,8 +26,19 @@ export class Renderer {
   private shake = 0;
   private t = 0;
   private started = false;
+  /** Screen shake and the throbbing danger vignette are motion for its own
+   *  sake, so they are dropped when the OS asks for reduced motion. Nothing
+   *  here feeds the simulation, so collision and scoring are unaffected. */
+  private reducedMotion = false;
 
-  constructor(private ctx: CanvasRenderingContext2D) {}
+  constructor(private ctx: CanvasRenderingContext2D) {
+    const q = matchMedia('(prefers-reduced-motion: reduce)');
+    this.reducedMotion = q.matches;
+    q.addEventListener('change', (e) => {
+      this.reducedMotion = e.matches;
+      if (this.reducedMotion) this.shake = 0;
+    });
+  }
 
   reset(): void {
     this.camRow = 0;
@@ -37,6 +48,7 @@ export class Renderer {
   }
 
   kick(power: number): void {
+    if (this.reducedMotion) return;
     this.shake = Math.max(this.shake, power);
   }
 
@@ -487,7 +499,9 @@ export class Renderer {
     const danger = Math.max(0, 1 - slack(state) / 2.6);
     if (danger <= 0 || state.phase !== 'playing') return;
     const ctx = this.ctx;
-    const pulse = 0.35 + 0.25 * Math.sin(this.t * 9);
+    // Steady instead of throbbing under reduced motion: the danger still reads,
+    // it just stops pulsing.
+    const pulse = this.reducedMotion ? 0.45 : 0.35 + 0.25 * Math.sin(this.t * 9);
     const g = ctx.createRadialGradient(vp.w / 2, vp.h / 2, Math.min(vp.w, vp.h) * 0.25, vp.w / 2, vp.h / 2, Math.max(vp.w, vp.h) * 0.7);
     g.addColorStop(0, 'rgba(255,60,50,0)');
     g.addColorStop(1, `rgba(255,60,50,${(danger * pulse).toFixed(3)})`);

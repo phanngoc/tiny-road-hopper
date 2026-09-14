@@ -139,20 +139,22 @@ export class Game {
   }
 
   private showMenu(): void {
+    // A thumb-only device is never told about WASD, P or Enter: those three
+    // lines were a third of the card and nothing on a phone can act on them.
+    const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+    const controls = touch
+      ? `<li><b>Swipe</b> to hop that way &middot; <b>tap</b> to hop forward</li>`
+      : `<li><b>&uarr; &darr; &larr; &rarr;</b> or <b>WASD</b> &mdash; hop one tile</li>
+         <li><b>Swipe</b> to hop that way &middot; <b>tap</b> to hop forward</li>
+         <li><b>P</b> pause &middot; <b>M</b> mute &middot; <b>Enter</b> start / restart</li>`;
     this.showOverlay(
       'Tiny Road Hopper',
-      `<p>Hop tile by tile across endless roads, rivers and railways.
-       The <strong>frontier</strong> creeps forward the whole time &mdash; fall more than
-       ${BEHIND_LIMIT} rows behind it and the hawk takes you.</p>
-       <ul>
-         <li><b>&uarr; &darr; &larr; &rarr;</b> or <b>WASD</b> &mdash; hop one tile</li>
-         <li><b>Swipe</b> to hop that way &middot; <b>tap</b> to hop forward</li>
-         <li><b>P</b> pause &middot; <b>M</b> mute &middot; <b>Enter</b> start / restart</li>
-       </ul>
-       <p>Traffic flattens you. Water drowns you &mdash; ride the
-       <span class="pw lg">logs</span> and lily pads, but do not let the current carry you
-       off the map. Red signal lamps mean a <span class="pw tr">train</span> is seconds away.
-       <span class="pw co">Coins</span> are worth 3 points each.</p>`,
+      `<p>Hop forward across endless roads, rivers and railways. Stay ahead of the
+       <strong>frontier</strong> creeping up behind you.</p>
+       <ul>${controls}</ul>
+       <p>Traffic flattens you &middot; water drowns you, so ride the
+       <span class="pw lg">logs</span> &middot; a red lamp means a
+       <span class="pw tr">train</span> &middot; <span class="pw co">coins</span> score 3.</p>`,
       'Start hopping',
     );
   }
