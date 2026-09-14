@@ -209,7 +209,9 @@ Chromium, pins the world (a single `restart()` after load always yields seed
 | DPR cap | 2 mobile / 1 desktop | unchanged |
 | Console errors | 0 | 0 |
 | Pilot reaches row 14 alive | yes, 5/5 viewports | yes, 5/5 viewports |
-| Browser smoke suite | 62/62 | 62/62 |
+| Browser smoke suite | 62/62 | 64/64 (2 new input-release checks) |
+| 60 s frame interval p50 @390x844 | 66.7 ms | 66.6 ms |
+| 60 s frame interval p95 @390x844 | 133.3 ms | 133.3 ms |
 
 Viewports: 360x640, 390x844, 430x932, 844x390 (short landscape) and 1280x800.
 
@@ -244,6 +246,15 @@ What changed:
 - **Reduced motion.** Screen shake and the throbbing danger vignette are
   dropped under `prefers-reduced-motion`. Both live in the renderer and feed
   nothing back into the simulation, so collision and scoring are unchanged.
+
+**About those frame intervals.** Both perf runs are marked `valid: false` by the
+harness. The intervals are quantised to multiples of 16.67 ms (66.7 = 4x,
+133.3 = 8x), which is headless Chromium throttling `requestAnimationFrame` - not
+the game loop taking 66 ms - and each run recorded 9 unexpected pilot deaths
+inside the sample. They are therefore usable only to show that this branch did
+**not** regress frame pacing against the baseline under identical conditions.
+**No FPS figure or 60 Hz claim is made**; that needs a headed browser or a
+physical device.
 
 These are emulated viewports on an Apple M1 host, **not** physical iPhone or
 Android devices. No real-device Safari or Android run has been done, and no

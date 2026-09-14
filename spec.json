@@ -106,12 +106,32 @@
       "dprCap": 2,
       "consoleErrors": 0
     },
-    "limitations": "Emulated Chromium viewports on an Apple M1 host. These are NOT physical iPhone or Android measurements, and no real-device Safari or Android browser run has been done. No 60 s frame-interval distribution has been captured for this branch yet, so no FPS claim is made."
+    "limitations": "Emulated Chromium viewports on an Apple M1 host. These are NOT physical iPhone or Android measurements, and no real-device Safari or Android browser run has been done. No 60 s frame-interval distribution has been captured for this branch yet, so no FPS claim is made.",
+    "perf": {
+      "harness": "scripts/perf.mjs - 3 s warm-up then a 60 s sample at 390x844 DPR2, headless Chromium 129 on darwin/arm64, pilot kept playing",
+      "before": {
+        "commit": "e204d32",
+        "frames": 885,
+        "seconds": 60.081,
+        "p50IntervalMs": 66.7,
+        "p95IntervalMs": 133.3,
+        "maxIntervalMs": 183.4
+      },
+      "after": {
+        "frames": 902,
+        "seconds": 60.047,
+        "p50IntervalMs": 66.6,
+        "p95IntervalMs": 133.3,
+        "maxIntervalMs": 133.4
+      },
+      "conclusion": "No measurable difference between the two builds under identical conditions, so the changes on this branch did not regress frame pacing.",
+      "whyNoFpsFigure": "Both runs are marked valid:false by the harness itself. The intervals are quantised to multiples of 16.67 ms (66.7 = 4x, 133.3 = 8x), which is headless Chromium throttling requestAnimationFrame, not the game loop taking 66 ms. Both runs also recorded 9 unexpected pilot deaths inside the sample. These numbers are therefore usable ONLY as a before/after comparison, NOT as an FPS figure, and no 60 Hz claim is made. A trustworthy figure needs a headed browser or a physical device."
+    }
   },
   "knownGaps": [
-    "No 60 s perf run (frame-interval distribution, heap trend) on this branch yet.",
     "Camera lookahead is still the original p.row + 0.55; not retuned.",
     "No real-device Safari/Android testing.",
-    "scripts/smoke.mjs 'hopper boards a log' is intermittent: seen failing twice on this branch and not in four consecutive baseline runs. The sample is too small to attribute, and the change cannot plausibly reach river boarding (the new check covers road and rail only). Unresolved, not suppressed."
+    "scripts/smoke.mjs 'hopper boards a log' is intermittent: seen failing twice on this branch and not in four consecutive baseline runs. The sample is too small to attribute, and the change cannot plausibly reach river boarding (the new check covers road and rail only). Unresolved, not suppressed.",
+    "No trustworthy FPS figure: headless Chromium throttles requestAnimationFrame to quantised multiples of the vsync interval, so scripts/perf.mjs can compare two builds but cannot establish 60 Hz. Needs a headed browser or a physical device."
   ]
 }
