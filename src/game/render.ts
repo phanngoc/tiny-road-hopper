@@ -319,13 +319,6 @@ export class Renderer {
     const body = hues[Math.floor(m.tint * hues.length) % hues.length]!;
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fillRect(cx - w / 2, ground - rowH * 0.1, w, rowH * 0.12);
-    // Contrast rim. The warm body hues sit on #3a3f47 asphalt well under a 3:1
-    // ratio, so this outline is a readability requirement, not decoration.
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
-    ctx.lineWidth = Math.max(1.5, tile * 0.055);
-    ctx.strokeRect(cx - w / 2 - 1, ground - rowH * 0.16 - tile * 0.44, w + 2, tile * 0.44 + rowH * 0.3);
-    ctx.restore();
     if (m.kind === 'truck') {
       this.box(cx + dir * w * 0.34, ground - rowH * 0.16, w * 0.3, rowH * 0.42, tile * 0.62, body, this.shade(body, 0.72));
       this.box(cx - dir * w * 0.2, ground - rowH * 0.16, w * 0.68, rowH * 0.44, tile * 0.8, '#dfe4ea', '#aeb6bf');
