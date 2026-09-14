@@ -52,7 +52,9 @@ html, body {
   padding: 0.4rem 0.6rem;
   font: inherit;
   cursor: pointer;
-  min-height: 2.2rem;
+  /* Project acceptance: every touch target is at least 44 CSS px tall. */
+  min-height: 44px;
+  min-width: 44px;
 }
 #hud button:hover { background: rgba(38, 58, 84, 0.9); }
 
@@ -158,5 +160,6 @@ html, body {
 
 @media (max-width: 430px) {
   #hud { gap: 0.4rem; }
+  /* Keep the 44px target; only the inner padding shrinks on narrow phones. */
   #hud button { padding: 0.35rem 0.45rem; }
 }
