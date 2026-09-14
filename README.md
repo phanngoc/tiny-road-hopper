@@ -209,6 +209,7 @@ Chromium, pins the world (a single `restart()` after load always yields seed
 | DPR cap | 2 mobile / 1 desktop | unchanged |
 | Console errors | 0 | 0 |
 | Pilot reaches row 14 alive | yes, 5/5 viewports | yes, 5/5 viewports |
+| Browser smoke suite | 62/62 | 62/62 |
 
 Viewports: 360x640, 390x844, 430x932, 844x390 (short landscape) and 1280x800.
 
@@ -218,11 +219,15 @@ What changed:
   half-finished swipe stayed armed and the next unrelated `touchmove` completed
   it as a hop nobody asked for. `touchcancel`, `pointercancel`, `mouseleave`,
   window `blur` and `visibilitychange` now all drop the gesture.
-- **Bounded input buffering.** Single-slot buffering and its `canEnter`
-  re-check already existed and were correct; what was missing was a bound on
-  staleness. `BUFFER_FROM = 0.5` means a press made in the first half of a hop
-  is dropped rather than banked, so a queued move cannot fire a full `HOP_TIME`
-  later into traffic the player never saw.
+- **Fair input buffering.** Single-slot buffering and its `canEnter` re-check
+  already existed and were correct; what was missing was a guard against the
+  world changing mid-hop. A press is still buffered across the whole hop, so a
+  deliberate fast sequence is never swallowed, but a buffered move is refused
+  and bumps if the cell it aims at has since been driven into by a car or a
+  passing train. `canEnter` only ever refused static blockers, so that hazard
+  was invisible to it. A directly pressed move is never second-guessed.
+  (A first attempt dropped early presses instead; it was reverted because it
+  cost responsiveness without the fairness.)
 - **Destination preview.** The landing cell is marked while a hop is in flight,
   with a dashed marker for a buffered press behind it.
 - **Reduced motion.** Screen shake and the throbbing danger vignette are

@@ -4,21 +4,62 @@
   "version": "1.1.0",
   "summary": "Original grid-hopping arcade game: cross endless roads, rivers and railways before the advancing frontier catches you.",
   "license": "MIT",
-  "engine": { "language": "TypeScript", "bundler": "Vite", "renderer": "Canvas 2D", "dependencies": "none at runtime" },
+  "engine": {
+    "language": "TypeScript",
+    "bundler": "Vite",
+    "renderer": "Canvas 2D",
+    "dependencies": "none at runtime"
+  },
   "controls": {
-    "keyboard": { "hop": ["ArrowUp/Down/Left/Right", "WASD", "Space (forward)"], "pause": ["P", "Escape"], "mute": ["M"], "confirm": ["Enter"] },
-    "touch": { "hop": "swipe in the direction to hop", "forward": "tap", "swipeMinPx": 24, "tapMaxMs": 350 },
+    "keyboard": {
+      "hop": [
+        "ArrowUp/Down/Left/Right",
+        "WASD",
+        "Space (forward)"
+      ],
+      "pause": [
+        "P",
+        "Escape"
+      ],
+      "mute": [
+        "M"
+      ],
+      "confirm": [
+        "Enter"
+      ]
+    },
+    "touch": {
+      "hop": "swipe in the direction to hop",
+      "forward": "tap",
+      "swipeMinPx": 24,
+      "tapMaxMs": 350
+    },
     "buffering": {
       "slots": 1,
-      "acceptFrom": 0.5,
-      "note": "A press during a hop is remembered only once the hop is at least BUFFER_FROM through. Earlier presses are dropped so a banked move cannot fire a full HOP_TIME later into traffic the player never saw. A buffered move is re-validated with canEnter before it plays."
+      "acceptWindow": "the whole hop",
+      "note": "A press during a hop is always remembered, so a deliberate fast sequence is never swallowed. Fairness is enforced when the move is played: a buffered move is refused (bumps) if the cell it aims at has since been occupied by a car or a passing train. canEnter only refuses static blockers, so that hazard was invisible to it. A directly pressed move is never second-guessed."
     }
   },
   "balance": {
-    "halfCols": 6, "lanePeriod": 26, "hopTime": 0.13, "hopHeight": 0.55, "playerWidth": 0.72,
-    "behindLimit": 5, "creepBase": 0.5, "creepPerRow": 0.0055, "creepMax": 2.3,
-    "aheadRows": 26, "keepBehind": 8, "safeStartRows": 3,
-    "trainWarn": 1.45, "trainWidth": 17, "trainSpeed": 26, "trainIdle": [1.6, 4.2],
+    "halfCols": 6,
+    "lanePeriod": 26,
+    "hopTime": 0.13,
+    "hopHeight": 0.55,
+    "playerWidth": 0.72,
+    "behindLimit": 5,
+    "creepBase": 0.5,
+    "creepPerRow": 0.0055,
+    "creepMax": 2.3,
+    "aheadRows": 26,
+    "keepBehind": 8,
+    "safeStartRows": 3,
+    "trainWarn": 1.45,
+    "trainWidth": 17,
+    "trainSpeed": 26,
+    "trainIdle": [
+      1.6,
+      4.2
+    ],
     "coinBonus": 3,
     "scoring": "score = furthest row reached + coins * COIN_BONUS",
     "determinism": "Simulation is pure, DOM-free and clock-free, driven at a fixed 1/120 s timestep. Renderer state (camera, shake, reduced motion) never feeds back into it."
@@ -38,9 +79,29 @@
   },
   "measured": {
     "harness": "scripts/shots.mjs - headless Chromium, pinned world (restart() once => seed 1015568748), pilot plays to row 14",
-    "viewports": ["360x640", "390x844", "430x932", "844x390", "1280x800"],
-    "before": { "commit": "e204d32", "touchTargetsUnder44": "pause-btn 46x35, mute-btn 63x35 at all 5 viewports", "menuWords": 99, "horizontalOverflowPx": 0, "dprCap": 2, "consoleErrors": 0 },
-    "after": { "touchTargetsUnder44": "none at any viewport", "menuWordsTouch": 49, "menuWordsDesktop": 69, "horizontalOverflowPx": 0, "dprCap": 2, "consoleErrors": 0 },
+    "viewports": [
+      "360x640",
+      "390x844",
+      "430x932",
+      "844x390",
+      "1280x800"
+    ],
+    "before": {
+      "commit": "e204d32",
+      "touchTargetsUnder44": "pause-btn 46x35, mute-btn 63x35 at all 5 viewports",
+      "menuWords": 99,
+      "horizontalOverflowPx": 0,
+      "dprCap": 2,
+      "consoleErrors": 0
+    },
+    "after": {
+      "touchTargetsUnder44": "none at any viewport",
+      "menuWordsTouch": 49,
+      "menuWordsDesktop": 69,
+      "horizontalOverflowPx": 0,
+      "dprCap": 2,
+      "consoleErrors": 0
+    },
     "limitations": "Emulated Chromium viewports on an Apple M1 host. These are NOT physical iPhone or Android measurements, and no real-device Safari or Android browser run has been done. No 60 s frame-interval distribution has been captured for this branch yet, so no FPS claim is made."
   },
   "knownGaps": [
@@ -48,6 +109,7 @@
     "No 60 s perf run (frame-interval distribution, heap trend) on this branch yet.",
     "Camera lookahead is still the original p.row + 0.55; not retuned.",
     "No short distance goals or themed row segments yet.",
-    "No real-device Safari/Android testing."
+    "No real-device Safari/Android testing.",
+    "scripts/smoke.mjs 'hopper boards a log' is intermittent: seen failing twice on this branch and not in four consecutive baseline runs. The sample is too small to attribute, and the change cannot plausibly reach river boarding (the new check covers road and rail only). Unresolved, not suppressed."
   ]
 }
