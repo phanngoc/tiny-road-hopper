@@ -1,7 +1,7 @@
 /** The whole simulation: pure, deterministic, DOM-free and clock-free, so the
  *  unit tests drive it exactly like the browser does. */
 import {
-  AHEAD_ROWS, BEHIND_LIMIT, BUFFER_FROM, COIN_BONUS, CREEP_BASE, CREEP_MAX, CREEP_PER_ROW,
+  AHEAD_ROWS, BEHIND_LIMIT, COIN_BONUS, CREEP_BASE, CREEP_MAX, CREEP_PER_ROW,
   HALF_COLS, HOP_TIME, KEEP_BEHIND, LANE_PERIOD, PLAYER_W, SAFE_START_ROWS,
   TRAIN_IDLE_MAX, TRAIN_IDLE_MIN, TRAIN_SPEED, TRAIN_W, TRAIN_WARN,
 } from './config';
@@ -185,16 +185,33 @@ export function canEnter(s: GameState, col: number, row: number): boolean {
   return !r.blockers.some((b) => b.col === col);
 }
 
-export function applyAction(s: GameState, a: Action): GameEvent[] {
+/** Is landing at (col, row) an instant kill right now? Only consulted for a
+ *  move that was buffered during a hop: the player chose it before this hazard
+ *  existed, so playing it unchanged would be the game stepping them into
+ *  traffic they never saw. A move pressed directly is still the player's own
+ *  call and is never second-guessed. */
+function lethalNow(s: GameState, col: number, row: number): boolean {
+  const r = rowAt(s, row);
+  if (!r) return false;
+  if (r.kind === 'road') {
+    return r.movers.some((m) => Math.abs(col - moverX(r, m)) < (m.w + PLAYER_W) / 2);
+  }
+  if (r.kind === 'rail') {
+    return r.train === 'passing' && Math.abs(col - r.trainX) < (TRAIN_W + PLAYER_W) / 2;
+  }
+  return false;
+}
+
+export function applyAction(s: GameState, a: Action, buffered = false): GameEvent[] {
   const out: GameEvent[] = [];
   if (s.phase !== 'playing') return out;
   const p = s.player;
   // One buffered move keeps fast taps feeling responsive without letting the
-  // player bank a queue of hops. Only the back half of the hop can buffer: a
-  // press banked at the very start would fire a whole hop later, by which time
-  // the lane it aims at may have filled with traffic the player never saw.
+  // player bank a queue of hops. The whole hop can buffer, so a deliberate fast
+  // sequence is never swallowed; fairness is enforced when the move is played
+  // instead, by `buffered` below.
   if (p.hop && p.hop.t < 1) {
-    if (p.hop.t >= BUFFER_FROM) s.queued = a;
+    s.queued = a;
     return out;
   }
   const fromCol = Math.round(p.x);
@@ -205,7 +222,7 @@ export function applyAction(s: GameState, a: Action): GameEvent[] {
   else if (a === 'left') col -= 1;
   else col += 1;
   p.face = a;
-  if (!canEnter(s, col, row)) {
+  if (!canEnter(s, col, row) || (buffered && lethalNow(s, col, row))) {
     p.hop = { fromX: p.x, fromRow: p.row, toX: p.x, toRow: p.row, t: 0, bump: true };
     out.push({ type: 'bump' });
     return out;
@@ -281,7 +298,7 @@ export function step(s: GameState, dt: number): GameEvent[] {
       if (s.queued) {
         const q = s.queued;
         s.queued = null;
-        out.push(...applyAction(s, q));
+        out.push(...applyAction(s, q, true));
       }
     }
   }

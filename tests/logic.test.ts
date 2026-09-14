@@ -4,7 +4,7 @@ import {
   rowAt, slack, startRun, step, wrap,
 } from '../src/game/logic';
 import {
-  BEHIND_LIMIT, BUFFER_FROM, COIN_BONUS, HALF_COLS, HOP_TIME, LANE_PERIOD, PLAYER_W,
+  BEHIND_LIMIT, COIN_BONUS, HALF_COLS, HOP_TIME, LANE_PERIOD, PLAYER_W,
   SAFE_START_ROWS, TRAIN_W, TRAIN_WARN,
 } from '../src/game/config';
 import type { Action, GameEvent, GameState, Row } from '../src/game/types';
@@ -202,8 +202,6 @@ describe('hopping', () => {
     const s = fresh();
     paveAll(s);
     applyAction(s, 'up');
-    // Advance into the back half of the hop, where buffering is accepted.
-    while (s.player.hop!.t < BUFFER_FROM) step(s, DT);
     applyAction(s, 'up');
     applyAction(s, 'right');
     expect(s.queued).toBe('right');
@@ -216,25 +214,45 @@ describe('hopping', () => {
     expect(s.queued).toBeNull();
   });
 
-  it('drops a press made in the first half of a hop instead of banking it', () => {
+  it('refuses a buffered move that traffic has driven into meanwhile', () => {
     const s = fresh();
     paveAll(s);
     applyAction(s, 'up');
-    expect(s.player.hop!.t).toBe(0);
     applyAction(s, 'right');
-    // A press this early would fire almost a whole hop later, by which time the
-    // lane it aims at may have filled with traffic the player never saw.
-    expect(s.queued).toBeNull();
+    expect(s.queued).toBe('right');
+    // The lane the buffered move aims at fills with a car during the hop - the
+    // player pressed before that car existed.
+    const landing = rowAt(s, 1)!;
+    landing.kind = 'road';
+    landing.speed = 4;
+    landing.phase = 0;
+    landing.movers = [{ p: 1, w: 1.6, kind: 'car', tint: 0.1 }];
     settle(s);
-    expect(s.player.row).toBe(1);
-    expect(s.player.x).toBeCloseTo(0);
+    settle(s);
+    // Refused, not driven into: the run is still alive and the hopper stayed put.
+    expect(s.phase).toBe('playing');
+    expect(Math.round(s.player.x)).toBe(0);
+    expect(s.queued).toBeNull();
+  });
+
+  it('still plays a directly pressed move into traffic - that is the player\'s call', () => {
+    const s = fresh();
+    paveAll(s);
+    const landing = rowAt(s, 1)!;
+    landing.kind = 'road';
+    landing.speed = 4;
+    landing.phase = 0;
+    landing.movers = [{ p: 0, w: 1.6, kind: 'car', tint: 0.1 }];
+    // Pressed directly, with no hop in flight, so it is not second-guessed.
+    applyAction(s, 'up');
+    expect(s.player.hop!.bump).toBe(false);
+    expect(s.player.hop!.toRow).toBe(1);
   });
 
   it('still re-checks a buffered move against the world before playing it', () => {
     const s = fresh();
     paveAll(s);
     applyAction(s, 'up');
-    while (s.player.hop!.t < BUFFER_FROM) step(s, DT);
     applyAction(s, 'right');
     expect(s.queued).toBe('right');
     // The cell the buffered move aims at becomes blocked mid-hop.
